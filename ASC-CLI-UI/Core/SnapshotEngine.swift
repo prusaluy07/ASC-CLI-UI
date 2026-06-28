@@ -1,0 +1,145 @@
+import Foundation
+import Combine
+import ASCShared
+
+// MARK: - Snapshot engine (Phase 2 producer)
+
+/// Captures App Store Connect data for an app and hands it to the ``CloudKitSync`` uploader.
+///
+/// Responsibilities:
+/// - Runs the read-only `asc` command behind each ``MirrorSection`` (via ``ASCService/run(_:json:)``,
+///   which does **not** touch the app's UI caches), wraps each JSON output in a ``Snapshot``
+///   with a cheap headline `summary`, and uploads the batch.
+/// - Supports on-demand capture ("Sync now") and periodic capture (a timer task).
+/// - Coalesces: skips overlapping runs, and throttles automatic (timer/foreground) runs so
+///   the CLI is never hammered.
+@MainActor
+final class SnapshotEngine: ObservableObject {
+    @Published private(set) var isSyncing = false
+    @Published private(set) var lastSyncDate: Date?
+    @Published private(set) var lastError: String?
+    @Published private(set) var lastSyncedSections: [String] = []
+
+    /// App whose data the timer/foreground triggers mirror. Set by the UI as the selection
+    /// changes so the background timer always targets the current app.
+    var currentAppId: String?
+
+    private let service: ASCService
+    private let uploader: CloudKitSync
+    private var sections: Set<MirrorSection> = MirrorSection.defaultSelection
+    private var timerTask: Task<Void, Never>?
+
+    /// Automatic (non-manual) runs closer together than this are skipped to avoid hammering
+    /// the CLI (e.g. repeated app foregrounding).
+    private let minimumAutomaticInterval: TimeInterval = 60
+
+    init(service: ASCService, uploader: CloudKitSync) {
+        self.service = service
+        self.uploader = uploader
+    }
+
+    // MARK: - Configuration
+
+    /// Applies the current settings: updates the mirrored sections and (re)starts or stops
+    /// the periodic timer.
+    func configure(enabled: Bool, interval: SyncInterval, sections: Set<MirrorSection>) {
+        self.sections = sections
+        if enabled {
+            startTimer(interval: interval.seconds)
+        } else {
+            stopTimer()
+        }
+    }
+
+    private func startTimer(interval: TimeInterval) {
+        stopTimer()
+        timerTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
+                if Task.isCancelled { break }
+                guard let self else { break }
+                await self.captureCurrent(manual: false)
+            }
+        }
+    }
+
+    private func stopTimer() {
+        timerTask?.cancel()
+        timerTask = nil
+    }
+
+    // MARK: - Capture
+
+    /// Captures + uploads the current app using the configured sections.
+    /// - Parameter manual: when false, throttles against ``minimumAutomaticInterval``.
+    func captureCurrent(manual: Bool) async {
+        guard let appId = currentAppId, !appId.isEmpty else { return }
+        await capture(appId: appId, sections: sections, manual: manual)
+    }
+
+    /// Captures + uploads a specific app/section set.
+    func capture(appId: String, sections: Set<MirrorSection>, manual: Bool) async {
+        guard !sections.isEmpty else { return }
+        guard !isSyncing else { return }
+        if !manual, let last = lastSyncDate,
+           Date().timeIntervalSince(last) < minimumAutomaticInterval {
+            return
+        }
+
+        isSyncing = true
+        defer { isSyncing = false }
+
+        var snapshots: [Snapshot] = []
+        // Run sequentially (in a stable order) so we never spawn many CLI processes at once.
+        for section in MirrorSection.allCases where sections.contains(section) {
+            let result = await service.run(arguments(for: section, appId: appId))
+            guard result.succeeded else { continue }
+            let payload = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !payload.isEmpty else { continue }
+            let summary = RemoteMirror.summarize(section: section, payloadJSON: payload)
+            snapshots.append(Snapshot(
+                appId: appId,
+                section: section.rawValue,
+                payloadJSON: payload,
+                summary: summary.isEmpty ? nil : summary
+            ))
+        }
+
+        guard !snapshots.isEmpty else {
+            lastError = service.lastError ?? "No data captured."
+            return
+        }
+
+        switch await uploader.upload(snapshots) {
+        case .success:
+            lastSyncDate = Date()
+            lastError = nil
+            lastSyncedSections = snapshots.map(\.section)
+        case .failure(let error):
+            lastError = CloudKitSync.message(for: error)
+        }
+    }
+
+    /// Read-only `asc` arguments backing each mirror section. Mirrors the argument lists
+    /// used by ``ASCService``'s loaders but goes through `run` directly so the app's
+    /// `@Published` caches are never disturbed by a background sync.
+    private func arguments(for section: MirrorSection, appId: String) -> [String] {
+        switch section {
+        case .status:
+            return ["status", "--app", appId,
+                    "--include", "app,builds,testflight,appstore,submission,review,phased-release,links"]
+        case .versions:
+            return ["versions", "list", "--app", appId, "--limit", "50"]
+        case .builds:
+            return ["builds", "list", "--app", appId, "--limit", "50"]
+        case .betaGroups:
+            return ["testflight", "groups", "list", "--app", appId, "--limit", "200"]
+        case .reviews:
+            return ["reviews", "ratings", "--app", appId]
+        case .pricing:
+            return ["pricing", "current", "--app", appId]
+        case .subscriptions:
+            return ["subscriptions", "groups", "list", "--app", appId]
+        }
+    }
+}

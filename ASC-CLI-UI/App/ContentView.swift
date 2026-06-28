@@ -118,9 +118,16 @@ enum SidebarItem: String, CaseIterable, Identifiable {
 struct ContentView: View {
     @EnvironmentObject var ascService: ASCService
     @EnvironmentObject var loc: LocalizationManager
+    @EnvironmentObject var cloudSync: CloudKitSync
+    @EnvironmentObject var syncEngine: SnapshotEngine
     @AppStorage("asc.hasOnboarded") private var hasOnboarded = false
     @AppStorage(PrefetchSettings.enabledKey) private var prefetchEnabled = false
     @AppStorage(PrefetchSettings.sectionsKey) private var prefetchSectionsRaw = PrefetchSettings.defaultRaw
+    @AppStorage(RemoteSyncSettings.enabledKey) private var syncEnabled = RemoteSyncSettings.defaultEnabled
+    @AppStorage(RemoteSyncSettings.intervalKey) private var syncIntervalRaw = RemoteSyncSettings.defaultInterval
+    @AppStorage(RemoteSyncSettings.sectionsKey) private var syncSectionsRaw = RemoteSyncSettings.defaultRaw
+
+    @Environment(\.scenePhase) private var scenePhase
 
     @State private var selectedItem: SidebarItem? = .overview
     @State private var selectedApp: ASCApp?
@@ -135,15 +142,31 @@ struct ContentView: View {
         }
         .onChange(of: selectedApp) { _, newApp in
             triggerPrefetch(for: newApp)
+            syncEngine.currentAppId = newApp?.id
         }
         .onChange(of: prefetchEnabled) { _, enabled in
             // Turning prefetch on should warm the already-selected app immediately.
             if enabled { triggerPrefetch(for: selectedApp) }
         }
+        .onChange(of: syncEnabled) { _, _ in configureSync() }
+        .onChange(of: syncIntervalRaw) { _, _ in configureSync() }
+        .onChange(of: syncSectionsRaw) { _, _ in configureSync() }
+        .onChange(of: scenePhase) { _, phase in
+            // Mirror on foreground (throttled inside the engine) when enabled.
+            if phase == .active, syncEnabled {
+                Task { await syncEngine.captureCurrent(manual: false) }
+            }
+        }
+        .task {
+            syncEngine.currentAppId = selectedApp?.id
+            configureSync()
+        }
         .sheet(isPresented: $showSettings) {
             SettingsView()
                 .environmentObject(ascService)
                 .environmentObject(loc)
+                .environmentObject(cloudSync)
+                .environmentObject(syncEngine)
         }
         .sheet(isPresented: Binding(
             get: { !hasOnboarded },
@@ -186,6 +209,14 @@ struct ContentView: View {
         let sections = PrefetchSettings.decode(prefetchSectionsRaw)
         guard !sections.isEmpty else { return }
         Task { await ascService.prefetch(appId: app.id, sections: sections) }
+    }
+
+    private func configureSync() {
+        syncEngine.configure(
+            enabled: syncEnabled,
+            interval: RemoteSyncSettings.interval(syncIntervalRaw),
+            sections: MirrorSection.decode(syncSectionsRaw)
+        )
     }
 
     // MARK: - App picker (shared selection)

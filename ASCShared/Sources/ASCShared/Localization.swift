@@ -259,6 +259,12 @@ public enum LocKey: String {
 
     // Structured output rendering
     case outFormatted, outRaw, outCountFmt
+
+    // Remote sync (CloudKit mirror)
+    case secRemoteSync, syncEnable, syncEnableDesc, syncIntervalLabel, syncSectionsLabel
+    case syncNow, syncNowRunning, syncNote, syncStatusLabel, syncNever
+    case syncLastSyncedFmt, syncFailedFmt, syncNeedApp
+    case syncEvery15m, syncHourly, syncEvery6h, syncDaily
 }
 
 // MARK: - Manager
@@ -1102,5 +1108,27 @@ enum Strings {
         .anStatusUnavailable: ["en": "unavailable", "de": "nicht verfügbar"],
         .anAnalyticsRestricted: ["en": "This API key can't read App Analytics reports, so acquisition metrics (impressions, page views, conversion) are unavailable — this is an Apple API restriction, not a bug. Downloads, revenue and subscriptions come from the Sales reports: set a vendor number under Reports. For analytics access, use a key with Admin/Account Holder role and enabled App Analytics reporting.",
                                  "de": "Dieser API-Key darf keine App-Analytics-Berichte lesen, daher sind Akquise-Kennzahlen (Impressionen, Seitenaufrufe, Konversion) nicht verfügbar — das ist eine Apple-API-Beschränkung, kein Fehler. Downloads, Umsatz und Abos stammen aus den Sales-Berichten: hinterlege dazu eine Anbieternummer unter „Berichte“. Für Analytics-Zugriff brauchst du einen Key mit Rolle Admin/Account Holder und aktivierter App-Analytics-Berichterstattung."],
+
+        // Remote sync (CloudKit mirror)
+        .secRemoteSync:  ["en": "Remote sync", "de": "Remote-Synchronisierung"],
+        .syncEnable:     ["en": "Mirror to iCloud", "de": "In iCloud spiegeln"],
+        .syncEnableDesc: ["en": "Periodically capture the selected app's data and upload it to your private iCloud database for a future companion iPhone app. Off by default.",
+                          "de": "Erfasst regelmäßig die Daten der gewählten App und lädt sie in deine private iCloud-Datenbank für eine künftige iPhone-Begleit-App. Standardmäßig aus."],
+        .syncIntervalLabel: ["en": "Interval", "de": "Intervall"],
+        .syncSectionsLabel: ["en": "Sections to mirror", "de": "Zu spiegelnde Bereiche"],
+        .syncNow:        ["en": "Sync now", "de": "Jetzt synchronisieren"],
+        .syncNowRunning: ["en": "Syncing…", "de": "Synchronisiere…"],
+        .syncNote:       ["en": "Mirroring uses your private CloudKit database (container iCloud.PySaasNow.ASC-CLI-UI). It never changes App Store Connect data.",
+                          "de": "Die Spiegelung nutzt deine private CloudKit-Datenbank (Container iCloud.PySaasNow.ASC-CLI-UI). App-Store-Connect-Daten werden nie verändert."],
+        .syncStatusLabel: ["en": "Last sync", "de": "Letzte Synchronisierung"],
+        .syncNever:      ["en": "Never", "de": "Nie"],
+        .syncLastSyncedFmt: ["en": "Last synced: %@", "de": "Zuletzt synchronisiert: %@"],
+        .syncFailedFmt:  ["en": "Sync failed: %@", "de": "Synchronisierung fehlgeschlagen: %@"],
+        .syncNeedApp:    ["en": "Select an app in the toolbar to mirror its data.",
+                          "de": "Wähle oben eine App, um ihre Daten zu spiegeln."],
+        .syncEvery15m:   ["en": "Every 15 minutes", "de": "Alle 15 Minuten"],
+        .syncHourly:     ["en": "Hourly", "de": "Stündlich"],
+        .syncEvery6h:    ["en": "Every 6 hours", "de": "Alle 6 Stunden"],
+        .syncDaily:      ["en": "Daily", "de": "Täglich"],
     ]
 }

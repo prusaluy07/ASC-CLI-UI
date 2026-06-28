@@ -5,10 +5,14 @@ import UniformTypeIdentifiers
 struct SettingsView: View {
     @EnvironmentObject var ascService: ASCService
     @EnvironmentObject var loc: LocalizationManager
+    @EnvironmentObject var syncEngine: SnapshotEngine
     @Environment(\.dismiss) var dismiss
     @AppStorage("asc.hasOnboarded") private var hasOnboarded = false
     @AppStorage(PrefetchSettings.enabledKey) private var prefetchEnabled = false
     @AppStorage(PrefetchSettings.sectionsKey) private var prefetchSectionsRaw = PrefetchSettings.defaultRaw
+    @AppStorage(RemoteSyncSettings.enabledKey) private var syncEnabled = RemoteSyncSettings.defaultEnabled
+    @AppStorage(RemoteSyncSettings.intervalKey) private var syncIntervalRaw = RemoteSyncSettings.defaultInterval
+    @AppStorage(RemoteSyncSettings.sectionsKey) private var syncSectionsRaw = RemoteSyncSettings.defaultRaw
 
     @State private var testResult: TestResult?
     @State private var isTesting = false
@@ -31,6 +35,7 @@ struct SettingsView: View {
                     binarySection
                     testSection
                     prefetchSection
+                    remoteSyncSection
                     onboardingSection
                     aboutSection
                 }
@@ -283,6 +288,96 @@ struct SettingsView: View {
             }
         }
     }
+
+    // MARK: - Remote sync (CloudKit mirror)
+
+    private var syncSectionBinding: Binding<Set<MirrorSection>> {
+        Binding(
+            get: { MirrorSection.decode(syncSectionsRaw) },
+            set: { syncSectionsRaw = MirrorSection.encode($0) }
+        )
+    }
+
+    private var remoteSyncSection: some View {
+        section(title: loc(.secRemoteSync)) {
+            Toggle(isOn: $syncEnabled) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(loc(.syncEnable)).fontWeight(.medium)
+                    Text(loc(.syncEnableDesc))
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+
+            if syncEnabled {
+                Picker(loc(.syncIntervalLabel), selection: $syncIntervalRaw) {
+                    ForEach(SyncInterval.allCases) { interval in
+                        Text(loc(interval.locKey)).tag(interval.rawValue)
+                    }
+                }
+                .padding(.top, 4)
+
+                Text(loc(.syncSectionsLabel))
+                    .font(.caption).foregroundStyle(.secondary)
+                    .padding(.top, 4)
+                ForEach(MirrorSection.allCases) { sec in
+                    Toggle(loc(sec.locKey), isOn: Binding(
+                        get: { syncSectionBinding.wrappedValue.contains(sec) },
+                        set: { on in
+                            var set = syncSectionBinding.wrappedValue
+                            if on { set.insert(sec) } else { set.remove(sec) }
+                            syncSectionBinding.wrappedValue = set
+                        }
+                    ))
+                }
+
+                HStack(spacing: 10) {
+                    Button {
+                        Task { await syncEngine.captureCurrent(manual: true) }
+                    } label: {
+                        if syncEngine.isSyncing {
+                            HStack(spacing: 8) {
+                                ProgressView().controlSize(.small)
+                                Text(loc(.syncNowRunning))
+                            }
+                        } else {
+                            Label(loc(.syncNow), systemImage: "arrow.triangle.2.circlepath.icloud")
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(syncEngine.isSyncing || syncEngine.currentAppId == nil)
+
+                    if syncEngine.currentAppId == nil {
+                        Text(loc(.syncNeedApp))
+                            .font(.caption).foregroundStyle(.orange)
+                    }
+                }
+                .padding(.top, 2)
+
+                HStack {
+                    Text(loc(.syncStatusLabel)).foregroundStyle(.secondary)
+                    Spacer()
+                    Text(syncEngine.lastSyncDate.map { Self.statusFormatter.string(from: $0) } ?? loc(.syncNever))
+                }
+                .font(.caption)
+
+                if let error = syncEngine.lastError {
+                    Label(loc(.syncFailedFmt, error), systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption2).foregroundStyle(.red)
+                        .textSelection(.enabled)
+                }
+
+                Text(loc(.syncNote))
+                    .font(.caption2).foregroundStyle(.tertiary)
+            }
+        }
+    }
+
+    private static let statusFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        f.timeStyle = .short
+        return f
+    }()
 
     // MARK: - About
 

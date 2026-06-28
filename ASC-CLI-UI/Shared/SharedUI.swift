@@ -255,6 +255,24 @@ enum PrefetchSettings {
     }
 }
 
+/// Persists the remote-sync (CloudKit mirror) preferences in AppStorage, mirroring the
+/// `PrefetchSettings` style. Section encode/decode lives in `MirrorSection` (ASCShared) so
+/// it's shared with the future iOS consumer and unit-tested in the package.
+enum RemoteSyncSettings {
+    static let enabledKey = "asc.remoteSyncEnabled"
+    static let intervalKey = "asc.remoteSyncInterval"
+    static let sectionsKey = "asc.remoteSyncSections"
+
+    /// Default OFF — sync is purely additive and opt-in.
+    static let defaultEnabled = false
+    static let defaultInterval = SyncInterval.hourly.rawValue
+    static let defaultRaw = MirrorSection.defaultRaw
+
+    static func interval(_ raw: String) -> SyncInterval {
+        SyncInterval(rawValue: raw) ?? .hourly
+    }
+}
+
 /// App metadata shown in Settings → About. `creator` is a plain constant you can edit.
 enum AppInfo {
     static var version: String { Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0" }

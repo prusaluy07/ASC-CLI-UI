@@ -3,14 +3,26 @@ import ASCShared
 
 @main
 struct ASCManagerApp: App {
-    @StateObject private var ascService = ASCService()
+    @StateObject private var ascService: ASCService
     @StateObject private var loc = LocalizationManager()
+    @StateObject private var cloudSync: CloudKitSync
+    @StateObject private var syncEngine: SnapshotEngine
+
+    init() {
+        let service = ASCService()
+        let sync = CloudKitSync()
+        _ascService = StateObject(wrappedValue: service)
+        _cloudSync = StateObject(wrappedValue: sync)
+        _syncEngine = StateObject(wrappedValue: SnapshotEngine(service: service, uploader: sync))
+    }
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(ascService)
                 .environmentObject(loc)
+                .environmentObject(cloudSync)
+                .environmentObject(syncEngine)
                 .frame(minWidth: 960, minHeight: 600)
                 .task { await ascService.refreshAuthStatus() }
         }
@@ -24,6 +36,8 @@ struct ASCManagerApp: App {
             SettingsView()
                 .environmentObject(ascService)
                 .environmentObject(loc)
+                .environmentObject(cloudSync)
+                .environmentObject(syncEngine)
         }
     }
 }

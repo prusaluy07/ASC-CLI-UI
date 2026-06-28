@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Phase 2 (CloudKit producer) entitlements for the macOS target.
+
+  IMPORTANT: This file is intentionally NOT yet wired into the Xcode target's
+  CODE_SIGN_ENTITLEMENTS build setting. The iCloud container
+  "iCloud.PySaasNow.ASC-CLI-UI" is not provisioned yet, so enabling these
+  entitlements in a headless / un-provisioned environment breaks automatic code
+  signing and the build.
+
+  To enable CloudKit once the container exists (see MOBILE_REMOTE.md):
+    Xcode → target "ASC-CLI-UI" → Signing & Capabilities → + Capability →
+      iCloud (check CloudKit, add container iCloud.PySaasNow.ASC-CLI-UI)
+      Push Notifications
+  Xcode will then set CODE_SIGN_ENTITLEMENTS to this file (or generate one).
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>com.apple.developer.icloud-container-identifiers</key>
+	<array>
+		<string>iCloud.PySaasNow.ASC-CLI-UI</string>
+	</array>
+	<key>com.apple.developer.icloud-services</key>
+	<array>
+		<string>CloudKit</string>
+	</array>
+	<key>com.apple.developer.ubiquity-kvstore-identifier</key>
+	<string>$(TeamIdentifierPrefix)PySaasNow.ASC-CLI-UI</string>
+	<key>aps-environment</key>
+	<string>development</string>
+</dict>
+</plist>
