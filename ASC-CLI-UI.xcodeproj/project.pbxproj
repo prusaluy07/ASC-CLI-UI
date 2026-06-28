@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		BBBB0000000000000000B003 /* ASCShared in Frameworks */ = {isa = PBXBuildFile; productRef = BBBB0000000000000000B002 /* ASCShared */; };
 		BBBB0000000000000000B005 /* ASCShared in Frameworks */ = {isa = PBXBuildFile; productRef = BBBB0000000000000000B004 /* ASCShared */; };
+		CCCC0000000000000000C010 /* ASCShared in Frameworks */ = {isa = PBXBuildFile; productRef = BBBB0000000000000000B006 /* ASCShared */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -24,6 +25,7 @@
 /* Begin PBXFileReference section */
 		6149839B2FF0380500404A56 /* ASC-CLI-UI.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "ASC-CLI-UI.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		AAAA0000000000000000A002 /* ASC-CLI-UITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "ASC-CLI-UITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		CCCC0000000000000000C002 /* ASC-CLI-UI-Remote.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "ASC-CLI-UI-Remote.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -35,6 +37,11 @@
 		AAAA0000000000000000A003 /* ASC-CLI-UITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = "ASC-CLI-UITests";
+			sourceTree = "<group>";
+		};
+		CCCC0000000000000000C003 /* ASC-CLI-UI-Remote */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "ASC-CLI-UI-Remote";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -56,6 +63,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		CCCC0000000000000000C005 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CCCC0000000000000000C010 /* ASCShared in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -64,6 +79,7 @@
 			children = (
 				6149839D2FF0380500404A56 /* ASC-CLI-UI */,
 				AAAA0000000000000000A003 /* ASC-CLI-UITests */,
+				CCCC0000000000000000C003 /* ASC-CLI-UI-Remote */,
 				6149839C2FF0380500404A56 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -73,6 +89,7 @@
 			children = (
 				6149839B2FF0380500404A56 /* ASC-CLI-UI.app */,
 				AAAA0000000000000000A002 /* ASC-CLI-UITests.xctest */,
+				CCCC0000000000000000C002 /* ASC-CLI-UI-Remote.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -127,6 +144,29 @@
 			productReference = AAAA0000000000000000A002 /* ASC-CLI-UITests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		CCCC0000000000000000C001 /* ASC-CLI-UI-Remote */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CCCC0000000000000000C009 /* Build configuration list for PBXNativeTarget "ASC-CLI-UI-Remote" */;
+			buildPhases = (
+				CCCC0000000000000000C004 /* Sources */,
+				CCCC0000000000000000C005 /* Frameworks */,
+				CCCC0000000000000000C006 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				CCCC0000000000000000C003 /* ASC-CLI-UI-Remote */,
+			);
+			name = "ASC-CLI-UI-Remote";
+			packageProductDependencies = (
+				BBBB0000000000000000B006 /* ASCShared */,
+			);
+			productName = "ASC-CLI-UI-Remote";
+			productReference = CCCC0000000000000000C002 /* ASC-CLI-UI-Remote.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -143,6 +183,9 @@
 					AAAA0000000000000000A001 = {
 						CreatedOnToolsVersion = 26.6;
 						TestTargetID = 6149839A2FF0380500404A56;
+					};
+					CCCC0000000000000000C001 = {
+						CreatedOnToolsVersion = 26.6;
 					};
 				};
 			};
@@ -165,6 +208,7 @@
 			targets = (
 				6149839A2FF0380500404A56 /* ASC-CLI-UI */,
 				AAAA0000000000000000A001 /* ASC-CLI-UITests */,
+				CCCC0000000000000000C001 /* ASC-CLI-UI-Remote */,
 			);
 		};
 /* End PBXProject section */
@@ -184,6 +228,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		CCCC0000000000000000C006 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -195,6 +246,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		AAAA0000000000000000A004 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CCCC0000000000000000C004 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -442,6 +500,71 @@
 			};
 			name = Release;
 		};
+		CCCC0000000000000000C00A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5L8RT3G37H;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = "PySaasNow.ASC-CLI-UI.Remote";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		CCCC0000000000000000C00B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5L8RT3G37H;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = "PySaasNow.ASC-CLI-UI.Remote";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -472,6 +595,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		CCCC0000000000000000C009 /* Build configuration list for PBXNativeTarget "ASC-CLI-UI-Remote" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CCCC0000000000000000C00A /* Debug */,
+				CCCC0000000000000000C00B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
@@ -487,6 +619,10 @@
 			productName = ASCShared;
 		};
 		BBBB0000000000000000B004 /* ASCShared */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ASCShared;
+		};
+		BBBB0000000000000000B006 /* ASCShared */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = ASCShared;
 		};
