@@ -1,4 +1,5 @@
 import SwiftUI
+import ASCShared
 import AppKit
 
 struct HelpView: View {

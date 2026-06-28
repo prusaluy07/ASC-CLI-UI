@@ -1,4 +1,5 @@
 import SwiftUI
+import ASCShared
 
 /// Apple Ads (Search Ads) campaign management. Uses separate Apple Ads OAuth credentials
 /// from the App Store Connect API key, and an organization ID shared across the tabs.

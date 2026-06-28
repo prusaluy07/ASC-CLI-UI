@@ -1,4 +1,5 @@
 import SwiftUI
+import ASCShared
 
 @main
 struct ASCManagerApp: App {

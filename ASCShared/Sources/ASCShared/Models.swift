@@ -4,21 +4,21 @@ import Foundation
 
 /// App Store Connect (and therefore `asc`) returns JSON:API documents:
 /// `{ "data": [ { "id": "...", "type": "...", "attributes": { ... } } ], "meta": { ... } }`
-struct ASCListResponse<T: Decodable>: Decodable {
-    let data: [T]
-    let meta: ASCMeta?
+public struct ASCListResponse<T: Decodable>: Decodable {
+    public let data: [T]
+    public let meta: ASCMeta?
 }
 
-struct ASCSingleResponse<T: Decodable>: Decodable {
-    let data: T
+public struct ASCSingleResponse<T: Decodable>: Decodable {
+    public let data: T
 }
 
-struct ASCMeta: Decodable {
-    struct Paging: Decodable {
-        let total: Int?
-        let limit: Int?
+public struct ASCMeta: Decodable {
+    public struct Paging: Decodable {
+        public let total: Int?
+        public let limit: Int?
     }
-    let paging: Paging?
+    public let paging: Paging?
 }
 
 /// Shared coding keys for the JSON:API resource envelope.
@@ -28,18 +28,18 @@ private enum ResourceKey: String, CodingKey {
 
 // MARK: - Models
 
-struct ASCApp: Identifiable, Decodable, Hashable {
-    let id: String
-    let name: String
-    let bundleId: String
-    let sku: String?
-    let primaryLocale: String?
+public struct ASCApp: Identifiable, Decodable, Hashable {
+    public let id: String
+    public let name: String
+    public let bundleId: String
+    public let sku: String?
+    public let primaryLocale: String?
 
     private enum Attr: String, CodingKey {
         case name, bundleId, sku, primaryLocale
     }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: ResourceKey.self)
         id = try c.decode(String.self, forKey: .id)
         let a = try c.nestedContainer(keyedBy: Attr.self, forKey: .attributes)
@@ -50,20 +50,20 @@ struct ASCApp: Identifiable, Decodable, Hashable {
     }
 }
 
-struct ASCBuild: Identifiable, Decodable {
-    let id: String
+public struct ASCBuild: Identifiable, Decodable {
+    public let id: String
     /// The build number (the JSON:API `version` attribute is the build number).
-    let buildNumber: String
-    let processingState: String
-    let uploadedDate: String?
-    let expirationDate: String?
-    let minOsVersion: String?
+    public let buildNumber: String
+    public let processingState: String
+    public let uploadedDate: String?
+    public let expirationDate: String?
+    public let minOsVersion: String?
 
     private enum Attr: String, CodingKey {
         case version, processingState, uploadedDate, expirationDate, minOsVersion
     }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: ResourceKey.self)
         id = try c.decode(String.self, forKey: .id)
         let a = try c.nestedContainer(keyedBy: Attr.self, forKey: .attributes)
@@ -75,20 +75,20 @@ struct ASCBuild: Identifiable, Decodable {
     }
 }
 
-struct ASCVersion: Identifiable, Decodable {
-    let id: String
-    let versionString: String
-    let platform: String?
-    let appStoreState: String?
-    let appVersionState: String?
-    let releaseType: String?
-    let createdDate: String?
+public struct ASCVersion: Identifiable, Decodable {
+    public let id: String
+    public let versionString: String
+    public let platform: String?
+    public let appStoreState: String?
+    public let appVersionState: String?
+    public let releaseType: String?
+    public let createdDate: String?
 
     private enum Attr: String, CodingKey {
         case versionString, platform, appStoreState, appVersionState, releaseType, createdDate
     }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: ResourceKey.self)
         id = try c.decode(String.self, forKey: .id)
         let a = try c.nestedContainer(keyedBy: Attr.self, forKey: .attributes)
@@ -101,22 +101,22 @@ struct ASCVersion: Identifiable, Decodable {
     }
 
     /// The most user-meaningful state for display.
-    var state: String { appStoreState ?? appVersionState ?? "—" }
+    public var state: String { appStoreState ?? appVersionState ?? "—" }
 }
 
-struct ASCCertificate: Identifiable, Decodable {
-    let id: String
-    let name: String
-    let type: String
-    let displayName: String?
-    let serialNumber: String?
-    let expirationDate: String?
+public struct ASCCertificate: Identifiable, Decodable {
+    public let id: String
+    public let name: String
+    public let type: String
+    public let displayName: String?
+    public let serialNumber: String?
+    public let expirationDate: String?
 
     private enum Attr: String, CodingKey {
         case name, certificateType, displayName, serialNumber, expirationDate
     }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: ResourceKey.self)
         id = try c.decode(String.self, forKey: .id)
         let a = try c.nestedContainer(keyedBy: Attr.self, forKey: .attributes)
@@ -128,18 +128,18 @@ struct ASCCertificate: Identifiable, Decodable {
     }
 }
 
-struct ASCProfile: Identifiable, Decodable {
-    let id: String
-    let name: String
-    let type: String
-    let state: String?
-    let expirationDate: String?
+public struct ASCProfile: Identifiable, Decodable {
+    public let id: String
+    public let name: String
+    public let type: String
+    public let state: String?
+    public let expirationDate: String?
 
     private enum Attr: String, CodingKey {
         case name, profileType, profileState, expirationDate
     }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: ResourceKey.self)
         id = try c.decode(String.self, forKey: .id)
         let a = try c.nestedContainer(keyedBy: Attr.self, forKey: .attributes)
@@ -150,19 +150,19 @@ struct ASCProfile: Identifiable, Decodable {
     }
 }
 
-struct ASCBetaGroup: Identifiable, Decodable {
-    let id: String
-    let name: String
-    let isInternal: Bool
-    let hasAccessToAllBuilds: Bool
-    let feedbackEnabled: Bool
-    let createdDate: String?
+public struct ASCBetaGroup: Identifiable, Decodable {
+    public let id: String
+    public let name: String
+    public let isInternal: Bool
+    public let hasAccessToAllBuilds: Bool
+    public let feedbackEnabled: Bool
+    public let createdDate: String?
 
     private enum Attr: String, CodingKey {
         case name, isInternalGroup, hasAccessToAllBuilds, feedbackEnabled, createdDate
     }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: ResourceKey.self)
         id = try c.decode(String.self, forKey: .id)
         let a = try c.nestedContainer(keyedBy: Attr.self, forKey: .attributes)
@@ -174,19 +174,19 @@ struct ASCBetaGroup: Identifiable, Decodable {
     }
 }
 
-struct ASCBetaTester: Identifiable, Decodable {
-    let id: String
-    let firstName: String?
-    let lastName: String?
-    let email: String?
-    let inviteType: String?
-    let state: String?
+public struct ASCBetaTester: Identifiable, Decodable {
+    public let id: String
+    public let firstName: String?
+    public let lastName: String?
+    public let email: String?
+    public let inviteType: String?
+    public let state: String?
 
     private enum Attr: String, CodingKey {
         case firstName, lastName, email, inviteType, state
     }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: ResourceKey.self)
         id = try c.decode(String.self, forKey: .id)
         let a = try c.nestedContainer(keyedBy: Attr.self, forKey: .attributes)
@@ -197,26 +197,26 @@ struct ASCBetaTester: Identifiable, Decodable {
         state = try? a.decode(String.self, forKey: .state)
     }
 
-    var fullName: String {
+    public var fullName: String {
         [firstName, lastName].compactMap { $0 }.joined(separator: " ")
     }
 }
 
-struct ASCVersionLocalization: Identifiable, Decodable {
-    let id: String
-    let locale: String
-    var description: String?
-    var keywords: String?
-    var whatsNew: String?
-    var promotionalText: String?
-    var supportUrl: String?
-    var marketingUrl: String?
+public struct ASCVersionLocalization: Identifiable, Decodable {
+    public let id: String
+    public let locale: String
+    public var description: String?
+    public var keywords: String?
+    public var whatsNew: String?
+    public var promotionalText: String?
+    public var supportUrl: String?
+    public var marketingUrl: String?
 
     private enum Attr: String, CodingKey {
         case locale, description, keywords, whatsNew, promotionalText, supportUrl, marketingUrl
     }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: ResourceKey.self)
         id = try c.decode(String.self, forKey: .id)
         let a = try c.nestedContainer(keyedBy: Attr.self, forKey: .attributes)
@@ -230,15 +230,15 @@ struct ASCVersionLocalization: Identifiable, Decodable {
     }
 }
 
-struct ASCBundleId: Identifiable, Decodable {
-    let id: String
-    let identifier: String
-    let name: String
-    let platform: String
+public struct ASCBundleId: Identifiable, Decodable {
+    public let id: String
+    public let identifier: String
+    public let name: String
+    public let platform: String
 
     private enum Attr: String, CodingKey { case identifier, name, platform }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: ResourceKey.self)
         id = try c.decode(String.self, forKey: .id)
         let a = try c.nestedContainer(keyedBy: Attr.self, forKey: .attributes)
@@ -250,47 +250,47 @@ struct ASCBundleId: Identifiable, Decodable {
 
 // MARK: - Release status report (custom asc `status` output)
 
-struct ASCStatusReport: Decodable {
-    struct App: Decodable { let id: String?; let bundleId: String?; let name: String? }
-    struct Summary: Decodable { let health: String?; let nextAction: String?; let blockers: [String]? }
-    struct LatestBuild: Decodable {
-        let id: String?; let version: String?; let buildNumber: String?
-        let processingState: String?; let uploadedDate: String?; let platform: String?
+public struct ASCStatusReport: Decodable {
+    public struct App: Decodable { public let id: String?; public let bundleId: String?; public let name: String? }
+    public struct Summary: Decodable { public let health: String?; public let nextAction: String?; public let blockers: [String]? }
+    public struct LatestBuild: Decodable {
+        public let id: String?; public let version: String?; public let buildNumber: String?
+        public let processingState: String?; public let uploadedDate: String?; public let platform: String?
     }
-    struct Builds: Decodable { let latest: LatestBuild? }
-    struct TestFlight: Decodable { let betaReviewState: String?; let submittedDate: String? }
-    struct AppStore: Decodable {
-        let versionId: String?; let version: String?; let state: String?
-        let platform: String?; let createdDate: String?
+    public struct Builds: Decodable { public let latest: LatestBuild? }
+    public struct TestFlight: Decodable { public let betaReviewState: String?; public let submittedDate: String? }
+    public struct AppStore: Decodable {
+        public let versionId: String?; public let version: String?; public let state: String?
+        public let platform: String?; public let createdDate: String?
     }
-    struct Review: Decodable { let state: String?; let submittedDate: String? }
-    struct Phased: Decodable { let configured: Bool? }
-    struct Links: Decodable { let appStoreConnect: String?; let testFlight: String? }
+    public struct Review: Decodable { public let state: String?; public let submittedDate: String? }
+    public struct Phased: Decodable { public let configured: Bool? }
+    public struct Links: Decodable { public let appStoreConnect: String?; public let testFlight: String? }
 
-    let app: App?
-    let summary: Summary?
-    let builds: Builds?
-    let testflight: TestFlight?
-    let appstore: AppStore?
-    let review: Review?
-    let phasedRelease: Phased?
-    let links: Links?
+    public let app: App?
+    public let summary: Summary?
+    public let builds: Builds?
+    public let testflight: TestFlight?
+    public let appstore: AppStore?
+    public let review: Review?
+    public let phasedRelease: Phased?
+    public let links: Links?
 }
 
 // MARK: - Auth status (custom asc output, not JSON:API)
 
-struct ASCAuthCredential: Identifiable, Decodable, Hashable {
-    var id: String { name }
-    let name: String
-    let keyId: String
-    let isDefault: Bool
-    let storedIn: String?
+public struct ASCAuthCredential: Identifiable, Decodable, Hashable {
+    public var id: String { name }
+    public let name: String
+    public let keyId: String
+    public let isDefault: Bool
+    public let storedIn: String?
 
     enum CodingKeys: String, CodingKey {
         case name, keyId, isDefault, storedIn
     }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         name = (try? c.decode(String.self, forKey: .name)) ?? "(unnamed)"
         keyId = (try? c.decode(String.self, forKey: .keyId)) ?? ""
@@ -299,19 +299,19 @@ struct ASCAuthCredential: Identifiable, Decodable, Hashable {
     }
 }
 
-struct ASCAuthStatus: Decodable {
-    let storageBackend: String?
-    let storageLocation: String?
-    let credentials: [ASCAuthCredential]
-    let environmentCredentialsProvided: Bool?
-    let environmentCredentialsComplete: Bool?
+public struct ASCAuthStatus: Decodable {
+    public let storageBackend: String?
+    public let storageLocation: String?
+    public let credentials: [ASCAuthCredential]
+    public let environmentCredentialsProvided: Bool?
+    public let environmentCredentialsComplete: Bool?
 
     enum CodingKeys: String, CodingKey {
         case storageBackend, storageLocation, credentials
         case environmentCredentialsProvided, environmentCredentialsComplete
     }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         storageBackend = try? c.decode(String.self, forKey: .storageBackend)
         storageLocation = try? c.decode(String.self, forKey: .storageLocation)
@@ -323,16 +323,23 @@ struct ASCAuthStatus: Decodable {
 
 // MARK: - Command result
 
-struct CommandResult {
-    let arguments: [String]
-    let output: String
-    let errorOutput: String
-    let exitCode: Int32
+public struct CommandResult {
+    public let arguments: [String]
+    public let output: String
+    public let errorOutput: String
+    public let exitCode: Int32
 
-    var succeeded: Bool { exitCode == 0 }
+    public init(arguments: [String], output: String, errorOutput: String, exitCode: Int32) {
+        self.arguments = arguments
+        self.output = output
+        self.errorOutput = errorOutput
+        self.exitCode = exitCode
+    }
+
+    public var succeeded: Bool { exitCode == 0 }
 
     /// A human-friendly error message, stripped of the leading `Error:` prefix that `asc` emits.
-    var errorMessage: String {
+    public var errorMessage: String {
         let trimmed = errorOutput.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty {
             return output.isEmpty ? "Command failed (exit code \(exitCode))." : output

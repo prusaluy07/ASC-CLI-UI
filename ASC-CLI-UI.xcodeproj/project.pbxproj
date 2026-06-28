@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		BBBB0000000000000000B003 /* ASCShared in Frameworks */ = {isa = PBXBuildFile; productRef = BBBB0000000000000000B002 /* ASCShared */; };
+		BBBB0000000000000000B005 /* ASCShared in Frameworks */ = {isa = PBXBuildFile; productRef = BBBB0000000000000000B004 /* ASCShared */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		AAAA0000000000000000A008 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -39,6 +44,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BBBB0000000000000000B003 /* ASCShared in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -46,6 +52,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BBBB0000000000000000B005 /* ASCShared in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -90,6 +97,7 @@
 			);
 			name = "ASC-CLI-UI";
 			packageProductDependencies = (
+				BBBB0000000000000000B002 /* ASCShared */,
 			);
 			productName = "ASC-CLI-UI";
 			productReference = 6149839B2FF0380500404A56 /* ASC-CLI-UI.app */;
@@ -113,6 +121,7 @@
 			);
 			name = "ASC-CLI-UITests";
 			packageProductDependencies = (
+				BBBB0000000000000000B004 /* ASCShared */,
 			);
 			productName = "ASC-CLI-UITests";
 			productReference = AAAA0000000000000000A002 /* ASC-CLI-UITests.xctest */;
@@ -146,6 +155,9 @@
 			);
 			mainGroup = 614983922FF0380500404A56;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				BBBB0000000000000000B001 /* XCLocalSwiftPackageReference "ASCShared" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 6149839C2FF0380500404A56 /* Products */;
 			projectDirPath = "";
@@ -461,6 +473,24 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		BBBB0000000000000000B001 /* XCLocalSwiftPackageReference "ASCShared" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ASCShared;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		BBBB0000000000000000B002 /* ASCShared */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ASCShared;
+		};
+		BBBB0000000000000000B004 /* ASCShared */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ASCShared;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 614983932FF0380500404A56 /* Project object */;
 }

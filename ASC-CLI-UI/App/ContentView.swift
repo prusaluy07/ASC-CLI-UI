@@ -1,4 +1,5 @@
 import SwiftUI
+import ASCShared
 
 enum SidebarSection: String, CaseIterable, Identifiable {
     case app, monetization, build, release, ads, developer

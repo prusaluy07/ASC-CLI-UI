@@ -1,4 +1,5 @@
 import SwiftUI
+import ASCShared
 
 struct BuildsView: View {
     @EnvironmentObject var ascService: ASCService

@@ -1,8 +1,6 @@
 import XCTest
 import ASCShared
-@testable import ASC_CLI_UI
 
-@MainActor
 final class OutputParsingTests: XCTestCase {
 
     func testNonJSONReturnsNil() {

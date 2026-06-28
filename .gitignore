@@ -1,9 +1,12 @@
 # Xcode / Swift build artifacts
 .build-dd/
+.build/
+.swiftpm/
 build/
 DerivedData/
 *.xcuserstate
 xcuserdata/
+*.profraw
 
 # macOS
 .DS_Store

@@ -1,4 +1,5 @@
 import SwiftUI
+import ASCShared
 
 /// Run repeatable repo-local automation workflows defined in `.asc/workflow.json`.
 /// Running a workflow executes arbitrary shell commands, so a real run is confirmed first.

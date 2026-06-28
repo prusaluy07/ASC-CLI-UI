@@ -3,15 +3,15 @@ import Combine
 
 // MARK: - Language
 
-enum AppLanguage: String, CaseIterable, Identifiable {
+public enum AppLanguage: String, CaseIterable, Identifiable {
     case system
     case english = "en"
     case german = "de"
 
-    var id: String { rawValue }
+    public var id: String { rawValue }
 
     /// Each language shown in its own name (plus a localized "System" entry handled by the manager).
-    var nativeName: String {
+    public var nativeName: String {
         switch self {
         case .system:  return "System"
         case .english: return "English"
@@ -22,7 +22,7 @@ enum AppLanguage: String, CaseIterable, Identifiable {
 
 // MARK: - Keys
 
-enum LocKey: String {
+public enum LocKey: String {
     // Common
     case appName, refresh, done, cancel, save, browse, back, next, skip, close, ok, load
     case connected, notConfigured
@@ -264,20 +264,20 @@ enum LocKey: String {
 // MARK: - Manager
 
 @MainActor
-final class LocalizationManager: ObservableObject {
-    @Published var language: AppLanguage {
+public final class LocalizationManager: ObservableObject {
+    @Published public var language: AppLanguage {
         didSet { UserDefaults.standard.set(language.rawValue, forKey: Self.storageKey) }
     }
 
     private static let storageKey = "app.language"
 
-    init() {
+    public init() {
         let raw = UserDefaults.standard.string(forKey: Self.storageKey)
         language = raw.flatMap(AppLanguage.init(rawValue:)) ?? .system
     }
 
     /// The concrete language code used for lookups ("en" or "de").
-    var code: String {
+    public var code: String {
         switch language {
         case .english: return "en"
         case .german:  return "de"
@@ -288,13 +288,13 @@ final class LocalizationManager: ObservableObject {
     }
 
     /// Localized string for a key, with optional `%@` arguments.
-    func callAsFunction(_ key: LocKey, _ args: CVarArg...) -> String {
+    public func callAsFunction(_ key: LocKey, _ args: CVarArg...) -> String {
         let entry = Strings.table[key]
         let template = entry?[code] ?? entry?["en"] ?? key.rawValue
         return args.isEmpty ? template : String(format: template, arguments: args)
     }
 
-    func displayName(for language: AppLanguage) -> String {
+    public func displayName(for language: AppLanguage) -> String {
         language.nativeName
     }
 }

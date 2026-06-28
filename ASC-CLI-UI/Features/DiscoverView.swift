@@ -1,4 +1,5 @@
 import SwiftUI
+import ASCShared
 
 struct DiscoverView: View {
     @EnvironmentObject var ascService: ASCService
