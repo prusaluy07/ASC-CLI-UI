@@ -1,8 +1,9 @@
 # Mobile Remote Mirror (iCloud / CloudKit)
 
-This document describes the **Phase 2** CloudKit "producer" that was added to the macOS
-app (`ASC-CLI-UI`), and the manual Apple Developer portal / Xcode steps required to turn
-it on. The eventual **Phase 3** iPhone "consumer" app is **not** built yet.
+This document describes the **Phase 2** CloudKit "producer" in the macOS app (`ASC-CLI-UI`)
+and the **Phase 3b** read-only iPhone "consumer" (`ASC-CLI-UI-Remote`), plus the manual
+Apple Developer portal / Xcode steps required to turn each on. The iOS consumer is built
+(see [Phase 3b](#phase-3b--ios-mirror-consumer-asc-cli-ui-remote) below).
 
 ## What Phase 2 added
 
@@ -95,12 +96,77 @@ iCloud container breaks automatic code signing in CI / headless builds.
 4. If you query in development, ensure you are looking at the **Development** environment
    matching your build, and that you are signed in to iCloud on the test Mac.
 
-## Phase 3 (not in scope here)
+## Phase 3b — iOS mirror consumer (`ASC-CLI-UI-Remote`)
 
-Still **pending** — to be built later:
+The iOS target is now a **read-only mirror consumer**. It reads the same private CloudKit
+records the macOS app uploads, caches them for offline use, renders them with the shared
+`OutputView`, and refreshes on a CloudKit push. It performs **no** App Store Connect
+access and runs **no** `asc` commands.
 
-- An **iOS app target** (consumer/reader) that subscribes to the `ASCMirror` zone.
-- Reading `ASCSnapshot` records, decoding `Snapshot` / `payloadJSON`, and rendering them.
-- Push-driven refresh (`CKDatabaseSubscription` + remote notifications) on iOS.
+### Code
 
-Phase 2 intentionally ships **no** iOS target, consumer UI, or push-receiving code.
+| File | Role |
+| --- | --- |
+| `ASCShared/Sources/ASCShared/MirrorConsumer.swift` | Pure, testable consumer logic: `SnapshotFields`, `MirrorAppGroup`, and `RemoteMirror.makeSnapshot(...)` / `decodeSummary(...)` / `group(...)` / `latest(...)`. No CloudKit import. |
+| `ASC-CLI-UI-Remote/CloudKitMirrorReader.swift` | `@MainActor` observable store. Fetches `ASCSnapshot` records from the private DB zone `ASCMirror`, handles String **and** `CKAsset` payloads, exposes `[MirrorAppGroup]` (grouped by `appId`), surfaces errors/empty state, never crashes. Manual `refresh()`. |
+| `ASC-CLI-UI-Remote/SnapshotCache.swift` | Offline cache: atomic Codable-to-file (`mirror-cache.json` in Application Support). |
+| `ASC-CLI-UI-Remote/RemotePush.swift` | `CKDatabaseSubscription` registration + `AppDelegate` for remote-notification delivery → posts `.mirrorRemoteChange` → triggers a refresh. |
+| `ASC-CLI-UI-Remote/RootView.swift` | Lists mirrored apps; pull-to-refresh; localized empty/error states. |
+| `ASC-CLI-UI-Remote/AppSectionsView.swift` | Per-app section list with summary headline + "last updated" stamp. |
+| `ASC-CLI-UI-Remote/SectionDetailView.swift` | Renders a real `Snapshot.payloadJSON` via the shared `OutputView`. |
+| `ASC-CLI-UI-Remote/ASC-CLI-UI-Remote.entitlements` | iCloud/CloudKit + Push entitlements — **present but not yet wired** (see below). |
+
+The consumer reuses the producer's shared constants directly — `RemoteMirror.containerID`,
+`RemoteMirror.zoneName`, `RemoteMirror.recordType`, and the field layout — so producer and
+consumer can never drift apart.
+
+### Offline cache
+
+The latest fetched snapshots are written as a single atomic JSON file. On launch the app
+loads the cache first (instant / offline last-known data), then refreshes from CloudKit.
+A flat replace-on-refresh array has no relationships or partial updates, so a plain Codable
+file is simpler and more failure-tolerant than SwiftData (it degrades to "no cache" rather
+than throwing store/migration errors).
+
+### Push
+
+Implemented in code (`RemotePush` + `AppDelegate`): a private-database `CKDatabaseSubscription`
+with `shouldSendContentAvailable` (silent push) is created after the device registers for
+remote notifications; an incoming CloudKit notification triggers `refresh()`. **Silent pushes
+only arrive on a real device with the capabilities enabled** (below) — until then the code is
+inert and the UI relies on manual pull-to-refresh.
+
+## Manual steps to enable the iOS consumer (required before live data / push)
+
+Like the macOS side, the iOS CloudKit + push **code compiles and ships today**, but the
+entitlement is deliberately **not** wired into `CODE_SIGN_ENTITLEMENTS` (enabling an
+unprovisioned iCloud container breaks automatic / headless code signing).
+
+1. **Provision CloudKit** (shared with macOS) — already done if Phase 2 is enabled:
+   the App ID has iCloud + Push, and the container `iCloud.PySaasNow.ASC-CLI-UI` exists.
+2. **Xcode — add capabilities to `ASC-CLI-UI-Remote`**
+   - Select the **ASC-CLI-UI-Remote** target → **Signing & Capabilities**.
+   - **+ Capability → iCloud**; check **CloudKit**; add container `iCloud.PySaasNow.ASC-CLI-UI`.
+   - **+ Capability → Push Notifications**.
+   - **+ Capability → Background Modes**; check **Remote notifications**.
+   - Xcode points `CODE_SIGN_ENTITLEMENTS` at the provided
+     `ASC-CLI-UI-Remote/ASC-CLI-UI-Remote.entitlements` (or generates one) and adds the
+     `UIBackgroundModes = remote-notification` Info.plist entry.
+3. **Run on a real device** (push notifications do not work in the Simulator). Sign in to the
+   **same iCloud account** as the Mac that uploads the mirror.
+
+## Confirm data flows Mac → CloudKit → iPhone
+
+1. On the Mac: **Settings → Remote sync**, enable, pick an app, **Sync now**.
+2. In the **CloudKit Dashboard** (private DB, zone `ASCMirror`): confirm `ASCSnapshot`
+   records named `<appId>:<section>` exist (see the Phase 2 verification above).
+3. On the iPhone: launch `ASC-CLI-UI-Remote`. It loads any cached data, then refreshes. The
+   app appears in **Mirrored Apps**; tap it to see each mirrored section with a "last
+   updated" stamp; tap a section to render its data.
+4. Push test: change data on the Mac and **Sync now** again. With capabilities enabled and a
+   real device, the phone receives a silent push and refreshes automatically; otherwise pull
+   down to refresh manually.
+
+> Note: the consumer fetches the whole zone via `CKFetchRecordZoneChangesOperation`, so it
+> needs **no** queryable indexes — only that the `ASCMirror` zone exists (created by the
+> producer's first sync).

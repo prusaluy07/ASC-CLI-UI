@@ -265,6 +265,10 @@ public enum LocKey: String {
     case syncNow, syncNowRunning, syncNote, syncStatusLabel, syncNever
     case syncLastSyncedFmt, syncFailedFmt, syncNeedApp
     case syncEvery15m, syncHourly, syncEvery6h, syncDaily
+
+    // iOS remote consumer (Phase 3b mirror reader)
+    case rmAppsTitle, rmEmptyTitle, rmEmptyMessage, rmLoadError, rmUpdatedFmt
+    case rmAppFmt, rmSectionsTitle, rmOfflineBadge, rmSignInTitle, rmSignInMessage
 }
 
 // MARK: - Manager
@@ -1130,5 +1134,20 @@ enum Strings {
         .syncHourly:     ["en": "Hourly", "de": "Stündlich"],
         .syncEvery6h:    ["en": "Every 6 hours", "de": "Alle 6 Stunden"],
         .syncDaily:      ["en": "Daily", "de": "Täglich"],
+
+        // iOS remote consumer (Phase 3b mirror reader)
+        .rmAppsTitle:    ["en": "Mirrored Apps", "de": "Gespiegelte Apps"],
+        .rmEmptyTitle:   ["en": "No mirrored data yet", "de": "Noch keine gespiegelten Daten"],
+        .rmEmptyMessage: ["en": "Enable Remote sync on the Mac and provision CloudKit to see your apps here.",
+                          "de": "Aktiviere die Remote-Synchronisierung auf dem Mac und richte CloudKit ein, um deine Apps hier zu sehen."],
+        .rmLoadError:    ["en": "Couldn’t load from iCloud", "de": "Laden aus iCloud fehlgeschlagen"],
+        .rmUpdatedFmt:   ["en": "Updated %@", "de": "Aktualisiert %@"],
+        .rmAppFmt:       ["en": "App %@", "de": "App %@"],
+        .rmSectionsTitle:["en": "Sections", "de": "Bereiche"],
+        .rmOfflineBadge: ["en": "Offline — showing last known data",
+                          "de": "Offline — zeige zuletzt bekannte Daten"],
+        .rmSignInTitle:  ["en": "Sign in to iCloud", "de": "Bei iCloud anmelden"],
+        .rmSignInMessage:["en": "Sign in to iCloud in Settings to read your mirrored App Store Connect data.",
+                          "de": "Melde dich in den Einstellungen bei iCloud an, um deine gespiegelten App-Store-Connect-Daten zu lesen."],
     ]
 }

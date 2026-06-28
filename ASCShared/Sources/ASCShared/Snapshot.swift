@@ -4,13 +4,17 @@ import Foundation
 /// (e.g. mirroring App Store Connect state to a companion iOS app). The raw `asc` JSON
 /// payload is preserved verbatim in `payloadJSON` so it can be re-parsed later, while
 /// `summary` holds a small set of pre-computed display values.
-public struct Snapshot: Codable, Sendable {
+public struct Snapshot: Codable, Sendable, Hashable, Identifiable {
     public var appId: String
     public var section: String
     public var schemaVersion: Int
     public var capturedAt: Date
     public var payloadJSON: String
     public var summary: [String: String]?
+
+    /// Stable identity matching the CloudKit record name (`"<appId>:<section>"`), so a
+    /// snapshot can be used directly as a SwiftUI list/navigation identifier.
+    public var id: String { "\(appId):\(section)" }
 
     public init(appId: String,
                 section: String,

@@ -1,19 +1,20 @@
 import SwiftUI
 import ASCShared
 
-/// Renders a single mirror section using the shared `OutputView`.
-///
-/// Phase 3a uses hardcoded sample JSON wrapped in a ``Snapshot`` to prove that the
-/// cross-platform renderer works on iOS. Phase 3b will replace `sampleSnapshot` with a
-/// real `Snapshot` read from the private CloudKit mirror database.
+/// Renders a single mirrored section's real ``Snapshot`` (read from CloudKit / cache) using
+/// the shared `OutputView`, with a "last updated" header.
 struct SectionDetailView: View {
     @EnvironmentObject private var loc: LocalizationManager
+    let snapshot: Snapshot
     let section: MirrorSection
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                placeholderNotice
+                Text(loc(.rmUpdatedFmt, formatted(snapshot.capturedAt)))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 OutputView(text: snapshot.payloadJSON)
             }
             .padding()
@@ -22,83 +23,35 @@ struct SectionDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    private var placeholderNotice: some View {
-        Label("Placeholder data — Phase 3b will load this section from the iCloud mirror.",
-              systemImage: "exclamationmark.triangle")
-            .font(.footnote)
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, alignment: .leading)
+    private func formatted(_ date: Date) -> String {
+        date.formatted(date: .abbreviated, time: .shortened)
     }
+}
 
-    /// Sample snapshot for the selected section. Mirrors the `Snapshot.payloadJSON`
-    /// shape the producer uploads, so the renderer is exercised exactly as it will be
-    /// in Phase 3b — only the data source differs.
-    private var snapshot: Snapshot {
-        Snapshot(appId: "sample",
-                 section: section.rawValue,
-                 payloadJSON: Self.samplePayload(for: section))
-    }
-
-    private static func samplePayload(for section: MirrorSection) -> String {
+#if DEBUG
+extension Snapshot {
+    /// Sample snapshot for SwiftUI previews only (not used at runtime).
+    static func previewSample(_ section: MirrorSection) -> Snapshot {
+        let payload: String
         switch section {
         case .versions:
-            return """
-            { "data": [
-              { "id": "1", "type": "appStoreVersions",
-                "attributes": { "versionString": "1.4.0", "platform": "IOS", "appStoreState": "READY_FOR_SALE" } },
-              { "id": "2", "type": "appStoreVersions",
-                "attributes": { "versionString": "1.5.0", "platform": "IOS", "appStoreState": "PREPARE_FOR_SUBMISSION" } }
-            ] }
-            """
-        case .builds:
-            return """
-            { "data": [
-              { "id": "b1", "type": "builds",
-                "attributes": { "version": "482", "processingState": "VALID", "uploadedDate": "2026-06-20" } },
-              { "id": "b2", "type": "builds",
-                "attributes": { "version": "483", "processingState": "PROCESSING", "uploadedDate": "2026-06-27" } }
-            ] }
-            """
-        case .subscriptions:
-            return """
-            { "subscriptions": [
-              { "name": "Pro Monthly", "productId": "pro.monthly", "state": "APPROVED",
-                "currentPrice": { "amount": "4.99", "currency": "USD" } },
-              { "name": "Pro Yearly", "productId": "pro.yearly", "state": "APPROVED",
-                "currentPrice": { "amount": "49.99", "currency": "USD" } }
-            ] }
-            """
-        case .pricing:
-            return """
-            { "data": [
-              { "name": "Base Tier", "territory": "USA", "state": "ACTIVE",
-                "price": { "amount": "2.99", "currency": "USD" } }
-            ] }
-            """
-        case .betaGroups:
-            return """
-            { "data": [
-              { "name": "Internal QA", "state": "ENABLED", "type": "internal" },
-              { "name": "Public Beta", "state": "ENABLED", "type": "external" }
-            ] }
-            """
-        case .reviews:
-            return """
-            { "averageRating": "4.6", "ratingCount": "1287" }
-            """
+            payload = #"{ "data": [ { "id": "1", "attributes": { "versionString": "1.4.0", "appStoreState": "READY_FOR_SALE" } } ] }"#
         case .status:
-            return """
-            { "summary": { "health": "READY", "nextAction": "Submit build 483 for review" },
-              "appstore": { "state": "READY_FOR_SALE" },
-              "review": { "state": "COMPLETED" } }
-            """
+            payload = #"{ "summary": { "health": "READY", "nextAction": "Submit build 483" }, "appstore": { "state": "READY_FOR_SALE" } }"#
+        default:
+            payload = #"{ "data": [ { "id": "a", "name": "Example", "state": "ACTIVE" } ] }"#
         }
+        return Snapshot(appId: "123456789",
+                        section: section.rawValue,
+                        payloadJSON: payload,
+                        summary: RemoteMirror.summarize(section: section, payloadJSON: payload))
     }
 }
 
 #Preview {
     NavigationStack {
-        SectionDetailView(section: .versions)
+        SectionDetailView(snapshot: .previewSample(.versions), section: .versions)
             .environmentObject(LocalizationManager())
     }
 }
+#endif
