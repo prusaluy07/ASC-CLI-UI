@@ -313,7 +313,7 @@ struct CommandScreen<Content: View>: View {
     var intro: String? = nil
     var requireApp: Bool = false
     var hasApp: Bool = true
-    var maxContentWidth: CGFloat = 860
+    var maxContentWidth: CGFloat = .infinity
     @ViewBuilder var content: (_ run: @escaping (@escaping () async -> CommandResult) -> Void, _ isRunning: Bool) -> Content
 
     @State private var output: String?

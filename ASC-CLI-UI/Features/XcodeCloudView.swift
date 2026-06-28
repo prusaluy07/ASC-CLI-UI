@@ -35,8 +35,7 @@ struct XcodeCloudView: View {
                         if let output { OutputPanel(title: loc(.output), text: output, maxHeight: 360) }
                     }
                     .padding(20)
-                    .frame(maxWidth: 760, alignment: .leading)
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
         }

@@ -360,8 +360,7 @@ struct SigningView: View {
                 if let notarizeOutput { OutputPanel(title: loc(.output), text: notarizeOutput) }
             }
             .padding(20)
-            .frame(maxWidth: 760, alignment: .leading)
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 

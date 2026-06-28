@@ -36,8 +36,7 @@ struct DiscoverView: View {
                     if let output { OutputPanel(title: loc(.rpResult), text: output, maxHeight: 420) }
                 }
                 .padding(20)
-                .frame(maxWidth: 820, alignment: .leading)
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }

@@ -51,8 +51,7 @@ struct MediaView: View {
                         if let output { OutputPanel(title: loc(.output), text: output) }
                     }
                     .padding(20)
-                    .frame(maxWidth: 800, alignment: .leading)
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
         }

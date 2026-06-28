@@ -28,8 +28,7 @@ struct HelpView: View {
                     linksCard
                 }
                 .padding(20)
-                .frame(maxWidth: 720, alignment: .leading)
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }

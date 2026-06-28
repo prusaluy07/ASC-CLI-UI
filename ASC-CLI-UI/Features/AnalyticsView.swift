@@ -339,8 +339,7 @@ struct AnalyticsView: View {
                         }
                     }
                     .padding(20)
-                    .frame(maxWidth: 960, alignment: .leading)
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
         }

@@ -91,8 +91,7 @@ struct MetadataView: View {
                 }
             }
             .padding(20)
-            .frame(maxWidth: 760, alignment: .leading)
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 

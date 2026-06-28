@@ -75,8 +75,7 @@ struct ReleaseView: View {
                     }
                 }
                 .padding(20)
-                .frame(maxWidth: 760, alignment: .leading)
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         } else if !ascService.isLoading {
             ContentUnavailableView(loc(.relNoStatus), systemImage: "antenna.radiowaves.left.and.right")
