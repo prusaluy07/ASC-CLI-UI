@@ -2,51 +2,68 @@ import SwiftUI
 import ASCShared
 import UniformTypeIdentifiers
 
+// MARK: - Settings panes
+
+enum SettingsPane: String, CaseIterable, Identifiable {
+    case language, profiles, profileRoles, binary, connection, prefetch, remoteSync, onboarding, about
+
+    var id: String { rawValue }
+
+    var icon: String {
+        switch self {
+        case .language:     return "globe"
+        case .profiles:     return "key"
+        case .profileRoles: return "person.2.badge.gearshape"
+        case .binary:       return "terminal"
+        case .connection:   return "network"
+        case .prefetch:     return "arrow.down.circle"
+        case .remoteSync:   return "icloud"
+        case .onboarding:   return "book"
+        case .about:        return "info.circle"
+        }
+    }
+
+    func title(_ loc: LocalizationManager) -> String {
+        switch self {
+        case .language:     return loc(.secLanguage)
+        case .profiles:     return loc(.authProfiles)
+        case .profileRoles: return loc(.profileRolesSection)
+        case .binary:       return loc(.ascBinary)
+        case .connection:   return loc(.connection)
+        case .prefetch:     return loc(.secPrefetch)
+        case .remoteSync:   return loc(.secRemoteSync)
+        case .onboarding:   return loc(.onboardingSection)
+        case .about:        return loc(.secAbout)
+        }
+    }
+}
+
+enum SettingsPresentation {
+    case sheet
+    case preferences
+}
+
+// MARK: - Root
+
 struct SettingsView: View {
+    var presentation: SettingsPresentation = .sheet
+
     @EnvironmentObject var ascService: ASCService
     @EnvironmentObject var loc: LocalizationManager
     @EnvironmentObject var syncEngine: SnapshotEngine
-    @Environment(\.dismiss) var dismiss
-    @AppStorage("asc.hasOnboarded") private var hasOnboarded = false
-    @AppStorage(PrefetchSettings.enabledKey) private var prefetchEnabled = false
-    @AppStorage(PrefetchSettings.sectionsKey) private var prefetchSectionsRaw = PrefetchSettings.defaultRaw
-    @AppStorage(RemoteSyncSettings.enabledKey) private var syncEnabled = RemoteSyncSettings.defaultEnabled
-    @AppStorage(RemoteSyncSettings.intervalKey) private var syncIntervalRaw = RemoteSyncSettings.defaultInterval
-    @AppStorage(RemoteSyncSettings.sectionsKey) private var syncSectionsRaw = RemoteSyncSettings.defaultRaw
+    @Environment(\.dismiss) private var dismiss
 
-    @State private var testResult: TestResult?
-    @State private var isTesting = false
+    @State private var selection: SettingsPane = .language
     @State private var showAddKey = false
 
-    enum TestResult {
-        case success(String)
-        case failure(String)
-    }
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            header
-            Divider()
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    languageSection
-                    profilesSection
-                    profileRolesSection
-                    binarySection
-                    testSection
-                    prefetchSection
-                    remoteSyncSection
-                    onboardingSection
-                    aboutSection
-                }
-                .padding(20)
+        Group {
+            if presentation == .sheet {
+                sheetChrome
+            } else {
+                splitView
             }
-
-            Divider()
-            footer
         }
-        .frame(width: 520, height: 680)
         .task { await ascService.refreshAuthStatus() }
         .sheet(isPresented: $showAddKey) {
             AddKeyView()
@@ -55,90 +72,169 @@ struct SettingsView: View {
         }
     }
 
-    private var header: some View {
-        HStack {
-            Text(loc(.settingsTitle))
-                .font(.title2)
-                .fontWeight(.semibold)
-            Spacer()
-            Button { dismiss() } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .foregroundStyle(.secondary)
-                    .font(.title3)
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(20)
-    }
-
-    private var footer: some View {
-        HStack {
-            Button(loc(.refresh)) {
-                Task { await ascService.refreshAuthStatus() }
-            }
-            Spacer()
-            Button(loc(.done)) {
-                ascService.saveSettings()
-                dismiss()
-            }
-            .buttonStyle(.borderedProminent)
-            .keyboardShortcut(.return)
-        }
-        .padding(16)
-    }
-
-    // MARK: - Language
-
-    private var languageSection: some View {
-        section(title: loc(.secLanguage)) {
-            Picker(loc(.language), selection: $loc.language) {
-                ForEach(AppLanguage.allCases) { lang in
-                    Text(loc.displayName(for: lang)).tag(lang)
-                }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            Text(loc(.languageHelp))
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-        }
-    }
-
-    // MARK: - Profiles
-
-    private var profilesSection: some View {
-        section(title: loc(.authProfiles)) {
-            let credentials = ascService.authStatus?.credentials ?? []
-            if credentials.isEmpty {
-                VStack(alignment: .leading, spacing: 10) {
-                    Label(loc(.noKeysFound), systemImage: "exclamationmark.triangle")
-                        .foregroundStyle(.orange)
-                        .font(.callout)
-                    Text(loc(.noKeysDesc))
-                        .font(.caption)
+    private var sheetChrome: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text(loc(.settingsTitle))
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                Spacer()
+                Button { dismiss() } label: {
+                    Image(systemName: "xmark.circle.fill")
                         .foregroundStyle(.secondary)
+                        .font(.title3)
                 }
-            } else {
-                VStack(spacing: 0) {
-                    ForEach(credentials) { cred in
-                        profileRow(cred)
-                        if cred.id != credentials.last?.id { Divider() }
-                    }
-                }
-                .background(Color.secondary.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
+                .buttonStyle(.plain)
+            }
+            .padding(20)
 
-                if let backend = ascService.authStatus?.storageBackend {
-                    Text(loc(.storedInFmt, backend))
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
+            Divider()
+            splitView
+            Divider()
+
+            HStack {
+                Button(loc(.refresh)) {
+                    Task { await ascService.refreshAuthStatus() }
+                }
+                Spacer()
+                Button(loc(.done)) {
+                    ascService.saveSettings()
+                    dismiss()
+                }
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.return)
+            }
+            .padding(16)
+        }
+        .frame(width: 760, height: 560)
+    }
+
+    private var splitView: some View {
+        NavigationSplitView {
+            List(SettingsPane.allCases, selection: $selection) { pane in
+                Label(pane.title(loc), systemImage: pane.icon)
+                    .tag(pane)
+            }
+            .listStyle(.sidebar)
+            .navigationTitle(loc(.settingsTitle))
+            .frame(minWidth: 200)
+        } detail: {
+            SettingsPaneDetail(pane: selection, showAddKey: $showAddKey)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
+        .navigationSplitViewStyle(.balanced)
+    }
+}
+
+// MARK: - Detail router
+
+private struct SettingsPaneDetail: View {
+    let pane: SettingsPane
+    @Binding var showAddKey: Bool
+
+    @EnvironmentObject var ascService: ASCService
+    @EnvironmentObject var loc: LocalizationManager
+    @EnvironmentObject var syncEngine: SnapshotEngine
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                switch pane {
+                case .language:     SettingsLanguagePane()
+                case .profiles:     SettingsProfilesPane(showAddKey: $showAddKey)
+                case .profileRoles: SettingsProfileRolesPane()
+                case .binary:       SettingsBinaryPane()
+                case .connection:   SettingsConnectionPane()
+                case .prefetch:     SettingsPrefetchPane()
+                case .remoteSync:   SettingsRemoteSyncPane()
+                case .onboarding:   SettingsOnboardingPane()
+                case .about:        SettingsAboutPane()
                 }
             }
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .navigationTitle(pane.title(loc))
+    }
+}
 
-            Button {
-                showAddKey = true
-            } label: {
-                Label(loc(.addApiKey), systemImage: "plus")
+// MARK: - Shared pane chrome
+
+private struct SettingsPaneHeader: View {
+    let title: String
+    let subtitle: String?
+
+    init(_ title: String, subtitle: String? = nil) {
+        self.title = title
+        self.subtitle = subtitle
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.title3)
+                .fontWeight(.semibold)
+            if let subtitle {
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
+        }
+        .padding(.bottom, 4)
+    }
+}
+
+// MARK: - Language
+
+private struct SettingsLanguagePane: View {
+    @EnvironmentObject var loc: LocalizationManager
+
+    var body: some View {
+        SettingsPaneHeader(loc(.secLanguage), subtitle: loc(.languageHelp))
+        Picker(loc(.language), selection: $loc.language) {
+            ForEach(AppLanguage.allCases) { lang in
+                Text(loc.displayName(for: lang)).tag(lang)
+            }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+    }
+}
+
+// MARK: - Profiles
+
+private struct SettingsProfilesPane: View {
+    @Binding var showAddKey: Bool
+
+    @EnvironmentObject var ascService: ASCService
+    @EnvironmentObject var loc: LocalizationManager
+
+    var body: some View {
+        SettingsPaneHeader(loc(.authProfiles), subtitle: loc(.noKeysDesc))
+
+        let credentials = ascService.authStatus?.credentials ?? []
+        if credentials.isEmpty {
+            Label(loc(.noKeysFound), systemImage: "exclamationmark.triangle")
+                .foregroundStyle(.orange)
+                .font(.callout)
+        } else {
+            VStack(spacing: 0) {
+                ForEach(credentials) { cred in
+                    profileRow(cred)
+                    if cred.id != credentials.last?.id { Divider() }
+                }
+            }
+            .background(Color.secondary.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
+
+            if let backend = ascService.authStatus?.storageBackend {
+                Text(loc(.storedInFmt, backend))
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+        }
+
+        Button { showAddKey = true } label: {
+            Label(loc(.addApiKey), systemImage: "plus")
         }
     }
 
@@ -174,29 +270,30 @@ struct SettingsView: View {
         }
         .buttonStyle(.plain)
     }
+}
 
-    // MARK: - Profile roles (capability → credential mapping)
+// MARK: - Profile roles
 
-    private var profileRolesSection: some View {
-        section(title: loc(.profileRolesSection)) {
-            Text(loc(.profileRolesDesc))
-                .font(.caption)
+private struct SettingsProfileRolesPane: View {
+    @EnvironmentObject var ascService: ASCService
+    @EnvironmentObject var loc: LocalizationManager
+
+    var body: some View {
+        SettingsPaneHeader(loc(.profileRolesSection), subtitle: loc(.profileRolesDesc))
+
+        let credentials = ascService.authStatus?.credentials ?? []
+        if credentials.count < 2 {
+            Text(loc(.profileCapUseDefault))
+                .font(.callout)
                 .foregroundStyle(.secondary)
-
-            let credentials = ascService.authStatus?.credentials ?? []
-            if credentials.count < 2 {
-                Text(loc(.profileCapUseDefault))
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            } else {
-                VStack(spacing: 0) {
-                    ForEach(ProfileCapability.assignable) { cap in
-                        profileRoleRow(cap, credentials: credentials)
-                        if cap != ProfileCapability.assignable.last { Divider() }
-                    }
+        } else {
+            VStack(spacing: 0) {
+                ForEach(ProfileCapability.assignable) { cap in
+                    profileRoleRow(cap, credentials: credentials)
+                    if cap != ProfileCapability.assignable.last { Divider() }
                 }
-                .background(Color.secondary.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
             }
+            .background(Color.secondary.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
         }
     }
 
@@ -222,259 +319,42 @@ struct SettingsView: View {
                 }
             }
             .labelsHidden()
-            .frame(width: 160)
+            .frame(width: 180)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
     }
+}
 
-    // MARK: - Binary
+// MARK: - Binary
 
-    private var binarySection: some View {
-        section(title: loc(.ascBinary)) {
-            HStack {
-                TextField("/opt/homebrew/bin/asc", text: $ascService.ascBinaryPath)
-                    .textFieldStyle(.roundedBorder)
-                Button(loc(.browse), action: browseForBinary)
-            }
-            if ascService.binaryExists {
-                Label(loc(.binaryFound), systemImage: "checkmark.circle.fill")
-                    .font(.caption)
-                    .foregroundStyle(.green)
-            } else {
-                VStack(alignment: .leading, spacing: 4) {
-                    Label(loc(.binaryNotFound), systemImage: "exclamationmark.triangle.fill")
-                        .font(.caption)
-                        .foregroundStyle(.orange)
-                    Text(loc(.installHintFmt, "brew install asc"))
-                        .font(.system(.caption2, design: .monospaced))
-                        .foregroundStyle(.tertiary)
-                }
-            }
-        }
-    }
+private struct SettingsBinaryPane: View {
+    @EnvironmentObject var ascService: ASCService
+    @EnvironmentObject var loc: LocalizationManager
 
-    // MARK: - Test
+    var body: some View {
+        SettingsPaneHeader(loc(.ascBinary))
 
-    private var testSection: some View {
-        section(title: loc(.connection)) {
-            Button {
-                runTest()
-            } label: {
-                if isTesting {
-                    HStack(spacing: 8) {
-                        ProgressView().controlSize(.small)
-                        Text(loc(.testing))
-                    }
-                } else {
-                    Label(loc(.testConnection), systemImage: "network")
-                }
-            }
-            .buttonStyle(.borderedProminent)
-            .disabled(isTesting || !ascService.isConfigured)
-
-            switch testResult {
-            case .success(let msg):
-                resultBanner(msg, color: .green, icon: "checkmark.circle.fill")
-            case .failure(let msg):
-                resultBanner(msg, color: .red, icon: "xmark.octagon.fill")
-            case .none:
-                EmptyView()
-            }
-        }
-    }
-
-    // MARK: - Onboarding
-
-    private var onboardingSection: some View {
-        section(title: loc(.onboardingSection)) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(loc(.replayOnboarding)).fontWeight(.medium)
-                    Text(loc(.replayOnboardingDesc))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                Button(loc(.showOnboarding)) {
-                    hasOnboarded = false
-                    dismiss()
-                }
-            }
-        }
-    }
-
-    // MARK: - Prefetch
-
-    private var prefetchBinding: Binding<Set<ASCService.PrefetchSection>> {
-        Binding(
-            get: { PrefetchSettings.decode(prefetchSectionsRaw) },
-            set: { prefetchSectionsRaw = PrefetchSettings.encode($0) }
-        )
-    }
-
-    private var prefetchSection: some View {
-        section(title: loc(.secPrefetch)) {
-            Toggle(isOn: $prefetchEnabled) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(loc(.prefetchEnable)).fontWeight(.medium)
-                    Text(loc(.prefetchEnableDesc))
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-            }
-
-            if prefetchEnabled {
-                Text(loc(.prefetchSectionsLabel))
-                    .font(.caption).foregroundStyle(.secondary)
-                    .padding(.top, 4)
-                ForEach(ASCService.PrefetchSection.allCases) { sec in
-                    Toggle(loc(sec.locKey), isOn: Binding(
-                        get: { prefetchBinding.wrappedValue.contains(sec) },
-                        set: { on in
-                            var set = prefetchBinding.wrappedValue
-                            if on { set.insert(sec) } else { set.remove(sec) }
-                            prefetchBinding.wrappedValue = set
-                        }
-                    ))
-                }
-                Text(loc(.prefetchNote))
-                    .font(.caption2).foregroundStyle(.tertiary)
-            }
-        }
-    }
-
-    // MARK: - Remote sync (CloudKit mirror)
-
-    private var syncSectionBinding: Binding<Set<MirrorSection>> {
-        Binding(
-            get: { MirrorSection.decode(syncSectionsRaw) },
-            set: { syncSectionsRaw = MirrorSection.encode($0) }
-        )
-    }
-
-    private var remoteSyncSection: some View {
-        section(title: loc(.secRemoteSync)) {
-            Toggle(isOn: $syncEnabled) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(loc(.syncEnable)).fontWeight(.medium)
-                    Text(loc(.syncEnableDesc))
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-            }
-
-            if syncEnabled {
-                Picker(loc(.syncIntervalLabel), selection: $syncIntervalRaw) {
-                    ForEach(SyncInterval.allCases) { interval in
-                        Text(loc(interval.locKey)).tag(interval.rawValue)
-                    }
-                }
-                .padding(.top, 4)
-
-                Text(loc(.syncSectionsLabel))
-                    .font(.caption).foregroundStyle(.secondary)
-                    .padding(.top, 4)
-                ForEach(MirrorSection.allCases) { sec in
-                    Toggle(loc(sec.locKey), isOn: Binding(
-                        get: { syncSectionBinding.wrappedValue.contains(sec) },
-                        set: { on in
-                            var set = syncSectionBinding.wrappedValue
-                            if on { set.insert(sec) } else { set.remove(sec) }
-                            syncSectionBinding.wrappedValue = set
-                        }
-                    ))
-                }
-
-                HStack(spacing: 10) {
-                    Button {
-                        Task { await syncEngine.captureCurrent(manual: true) }
-                    } label: {
-                        if syncEngine.isSyncing {
-                            HStack(spacing: 8) {
-                                ProgressView().controlSize(.small)
-                                Text(loc(.syncNowRunning))
-                            }
-                        } else {
-                            Label(loc(.syncNow), systemImage: "arrow.triangle.2.circlepath.icloud")
-                        }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(syncEngine.isSyncing || syncEngine.currentAppId == nil)
-
-                    if syncEngine.currentAppId == nil {
-                        Text(loc(.syncNeedApp))
-                            .font(.caption).foregroundStyle(.orange)
-                    }
-                }
-                .padding(.top, 2)
-
-                HStack {
-                    Text(loc(.syncStatusLabel)).foregroundStyle(.secondary)
-                    Spacer()
-                    Text(syncEngine.lastSyncDate.map { Self.statusFormatter.string(from: $0) } ?? loc(.syncNever))
-                }
-                .font(.caption)
-
-                if let error = syncEngine.lastError {
-                    Label(loc(.syncFailedFmt, error), systemImage: "exclamationmark.triangle.fill")
-                        .font(.caption2).foregroundStyle(.red)
-                        .textSelection(.enabled)
-                }
-
-                Text(loc(.syncNote))
-                    .font(.caption2).foregroundStyle(.tertiary)
-            }
-        }
-    }
-
-    private static let statusFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateStyle = .medium
-        f.timeStyle = .short
-        return f
-    }()
-
-    // MARK: - About
-
-    private var aboutSection: some View {
-        section(title: loc(.secAbout)) {
-            aboutRow(loc(.aboutVersion), "\(AppInfo.version) (\(AppInfo.build))")
-            aboutRow(loc(.aboutCreator), AppInfo.creator)
-            aboutRow(loc(.aboutLicense), AppInfo.license)
-        }
-    }
-
-    private func aboutRow(_ label: String, _ value: String) -> some View {
         HStack {
-            Text(label).foregroundStyle(.secondary)
-            Spacer()
-            Text(value).textSelection(.enabled)
+            TextField("/opt/homebrew/bin/asc", text: $ascService.ascBinaryPath)
+                .textFieldStyle(.roundedBorder)
+            Button(loc(.browse), action: browseForBinary)
         }
-        .font(.callout)
-    }
 
-    private func resultBanner(_ text: String, color: Color, icon: String) -> some View {
-        HStack(alignment: .top, spacing: 8) {
-            Image(systemName: icon).foregroundStyle(color)
-            Text(text)
+        if ascService.binaryExists {
+            Label(loc(.binaryFound), systemImage: "checkmark.circle.fill")
                 .font(.caption)
-                .foregroundStyle(.primary)
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .foregroundStyle(.green)
+        } else {
+            VStack(alignment: .leading, spacing: 4) {
+                Label(loc(.binaryNotFound), systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                Text(loc(.installHintFmt, "brew install asc"))
+                    .font(.system(.caption2, design: .monospaced))
+                    .foregroundStyle(.tertiary)
+            }
         }
-        .padding(10)
-        .background(color.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
-    }
-
-    // MARK: - Helpers
-
-    @ViewBuilder
-    private func section(title: String, @ViewBuilder content: () -> some View) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title)
-                .font(.headline)
-            content()
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func browseForBinary() {
@@ -486,6 +366,47 @@ struct SettingsView: View {
         if panel.runModal() == .OK, let url = panel.url {
             ascService.ascBinaryPath = url.path
             ascService.saveSettings()
+        }
+    }
+}
+
+// MARK: - Connection
+
+private struct SettingsConnectionPane: View {
+    @EnvironmentObject var ascService: ASCService
+    @EnvironmentObject var loc: LocalizationManager
+
+    @State private var testResult: TestResult?
+    @State private var isTesting = false
+
+    enum TestResult {
+        case success(String)
+        case failure(String)
+    }
+
+    var body: some View {
+        SettingsPaneHeader(loc(.connection))
+
+        Button { runTest() } label: {
+            if isTesting {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text(loc(.testing))
+                }
+            } else {
+                Label(loc(.testConnection), systemImage: "network")
+            }
+        }
+        .buttonStyle(.borderedProminent)
+        .disabled(isTesting || !ascService.isConfigured)
+
+        switch testResult {
+        case .success(let msg):
+            SettingsResultBanner(text: msg, color: .green, icon: "checkmark.circle.fill")
+        case .failure(let msg):
+            SettingsResultBanner(text: msg, color: .red, icon: "xmark.octagon.fill")
+        case .none:
+            EmptyView()
         }
     }
 
@@ -501,6 +422,212 @@ struct SettingsView: View {
             }
             isTesting = false
         }
+    }
+}
+
+// MARK: - Prefetch
+
+private struct SettingsPrefetchPane: View {
+    @EnvironmentObject var loc: LocalizationManager
+
+    @AppStorage(PrefetchSettings.enabledKey) private var prefetchEnabled = false
+    @AppStorage(PrefetchSettings.sectionsKey) private var prefetchSectionsRaw = PrefetchSettings.defaultRaw
+
+    private var prefetchBinding: Binding<Set<ASCService.PrefetchSection>> {
+        Binding(
+            get: { PrefetchSettings.decode(prefetchSectionsRaw) },
+            set: { prefetchSectionsRaw = PrefetchSettings.encode($0) }
+        )
+    }
+
+    var body: some View {
+        SettingsPaneHeader(loc(.secPrefetch), subtitle: loc(.prefetchEnableDesc))
+
+        Toggle(isOn: $prefetchEnabled) {
+            Text(loc(.prefetchEnable)).fontWeight(.medium)
+        }
+
+        if prefetchEnabled {
+            Text(loc(.prefetchSectionsLabel))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.top, 4)
+            ForEach(ASCService.PrefetchSection.allCases) { sec in
+                Toggle(loc(sec.locKey), isOn: Binding(
+                    get: { prefetchBinding.wrappedValue.contains(sec) },
+                    set: { on in
+                        var set = prefetchBinding.wrappedValue
+                        if on { set.insert(sec) } else { set.remove(sec) }
+                        prefetchBinding.wrappedValue = set
+                    }
+                ))
+            }
+            Text(loc(.prefetchNote))
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+        }
+    }
+}
+
+// MARK: - Remote sync
+
+private struct SettingsRemoteSyncPane: View {
+    @EnvironmentObject var loc: LocalizationManager
+    @EnvironmentObject var syncEngine: SnapshotEngine
+
+    @AppStorage(RemoteSyncSettings.enabledKey) private var syncEnabled = RemoteSyncSettings.defaultEnabled
+    @AppStorage(RemoteSyncSettings.intervalKey) private var syncIntervalRaw = RemoteSyncSettings.defaultInterval
+    @AppStorage(RemoteSyncSettings.sectionsKey) private var syncSectionsRaw = RemoteSyncSettings.defaultRaw
+
+    private var syncSectionBinding: Binding<Set<MirrorSection>> {
+        Binding(
+            get: { MirrorSection.decode(syncSectionsRaw) },
+            set: { syncSectionsRaw = MirrorSection.encode($0) }
+        )
+    }
+
+    private static let statusFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        f.timeStyle = .short
+        return f
+    }()
+
+    var body: some View {
+        SettingsPaneHeader(loc(.secRemoteSync), subtitle: loc(.syncEnableDesc))
+
+        Toggle(isOn: $syncEnabled) {
+            Text(loc(.syncEnable)).fontWeight(.medium)
+        }
+
+        if syncEnabled {
+            Picker(loc(.syncIntervalLabel), selection: $syncIntervalRaw) {
+                ForEach(SyncInterval.allCases) { interval in
+                    Text(loc(interval.locKey)).tag(interval.rawValue)
+                }
+            }
+            .padding(.top, 4)
+
+            Text(loc(.syncSectionsLabel))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.top, 4)
+            ForEach(MirrorSection.allCases) { sec in
+                Toggle(loc(sec.locKey), isOn: Binding(
+                    get: { syncSectionBinding.wrappedValue.contains(sec) },
+                    set: { on in
+                        var set = syncSectionBinding.wrappedValue
+                        if on { set.insert(sec) } else { set.remove(sec) }
+                        syncSectionBinding.wrappedValue = set
+                    }
+                ))
+            }
+
+            HStack(spacing: 10) {
+                Button {
+                    Task { await syncEngine.captureCurrent(manual: true) }
+                } label: {
+                    if syncEngine.isSyncing {
+                        HStack(spacing: 8) {
+                            ProgressView().controlSize(.small)
+                            Text(loc(.syncNowRunning))
+                        }
+                    } else {
+                        Label(loc(.syncNow), systemImage: "arrow.triangle.2.circlepath.icloud")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(syncEngine.isSyncing || syncEngine.currentAppId == nil)
+
+                if syncEngine.currentAppId == nil {
+                    Text(loc(.syncNeedApp))
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                }
+            }
+            .padding(.top, 2)
+
+            HStack {
+                Text(loc(.syncStatusLabel)).foregroundStyle(.secondary)
+                Spacer()
+                Text(syncEngine.lastSyncDate.map { Self.statusFormatter.string(from: $0) } ?? loc(.syncNever))
+            }
+            .font(.caption)
+
+            if let error = syncEngine.lastError {
+                Label(loc(.syncFailedFmt, error), systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption2)
+                    .foregroundStyle(.red)
+                    .textSelection(.enabled)
+            }
+
+            Text(loc(.syncNote))
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+        }
+    }
+}
+
+// MARK: - Onboarding
+
+private struct SettingsOnboardingPane: View {
+    @EnvironmentObject var loc: LocalizationManager
+    @Environment(\.dismiss) private var dismiss
+
+    @AppStorage("asc.hasOnboarded") private var hasOnboarded = false
+
+    var body: some View {
+        SettingsPaneHeader(loc(.onboardingSection), subtitle: loc(.replayOnboardingDesc))
+
+        Button(loc(.showOnboarding)) {
+            hasOnboarded = false
+            dismiss()
+        }
+        .buttonStyle(.borderedProminent)
+    }
+}
+
+// MARK: - About
+
+private struct SettingsAboutPane: View {
+    @EnvironmentObject private var loc: LocalizationManager
+
+    var body: some View {
+        SettingsPaneHeader(loc(.secAbout))
+
+        aboutRow(loc(.aboutVersion), "\(AppInfo.version) (\(AppInfo.build))")
+        aboutRow(loc(.aboutCreator), AppInfo.creator)
+        aboutRow(loc(.aboutLicense), AppInfo.license)
+    }
+
+    private func aboutRow(_ label: String, _ value: String) -> some View {
+        HStack {
+            Text(label).foregroundStyle(.secondary)
+            Spacer()
+            Text(value).textSelection(.enabled)
+        }
+        .font(.callout)
+    }
+}
+
+// MARK: - Shared UI
+
+private struct SettingsResultBanner: View {
+    let text: String
+    let color: Color
+    let icon: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: icon).foregroundStyle(color)
+            Text(text)
+                .font(.caption)
+                .foregroundStyle(.primary)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(10)
+        .background(color.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
     }
 }
 
@@ -568,9 +695,7 @@ struct AddKeyView: View {
             HStack {
                 Spacer()
                 Button(loc(.cancel)) { dismiss() }
-                Button {
-                    save()
-                } label: {
+                Button { save() } label: {
                     if isSaving {
                         HStack(spacing: 6) { ProgressView().controlSize(.small); Text(loc(.saving)) }
                     } else {

@@ -33,7 +33,7 @@ struct ASCManagerApp: App {
         }
 
         Settings {
-            SettingsView()
+            SettingsView(presentation: .preferences)
                 .environmentObject(ascService)
                 .environmentObject(loc)
                 .environmentObject(cloudSync)
