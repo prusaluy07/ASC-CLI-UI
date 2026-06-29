@@ -1,0 +1,32 @@
+name: Feature request
+description: Suggest an idea or enhancement for ASC Manager
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Describe the use case or pain point.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What would you like ASC Manager to do?
+    validations:
+      required: true
+  - type: input
+    id: asc-command
+    attributes:
+      label: Related asc command(s)
+      description: If this maps to an `asc` subcommand, which one?
+      placeholder: "asc analytics view"
+    validations:
+      required: false
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: false

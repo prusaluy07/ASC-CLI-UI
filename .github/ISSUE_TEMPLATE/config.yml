@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: asc CLI documentation
+    url: https://asccli.sh/
+    about: Questions about the underlying asc CLI itself.

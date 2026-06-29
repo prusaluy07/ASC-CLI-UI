@@ -1,0 +1,50 @@
+name: Bug report
+description: Report a problem with ASC Manager
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug. Please do **not** include any API keys,
+        tokens, or other credentials in this report.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug and what you expected instead.
+      placeholder: When I click X, Y happens instead of Z.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. See error
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: "14.5"
+    validations:
+      required: true
+  - type: input
+    id: asc-version
+    attributes:
+      label: asc CLI version
+      description: Output of `asc --version`
+      placeholder: "1.x.x"
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant output or screenshots
+      description: Paste any error text (with credentials removed) or attach screenshots.
+      render: shell
+    validations:
+      required: false
