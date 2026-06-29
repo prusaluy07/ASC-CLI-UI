@@ -32,6 +32,7 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 24) {
                     languageSection
                     profilesSection
+                    profileRolesSection
                     binarySection
                     testSection
                     prefetchSection
@@ -172,6 +173,59 @@ struct SettingsView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+
+    // MARK: - Profile roles (capability → credential mapping)
+
+    private var profileRolesSection: some View {
+        section(title: loc(.profileRolesSection)) {
+            Text(loc(.profileRolesDesc))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            let credentials = ascService.authStatus?.credentials ?? []
+            if credentials.count < 2 {
+                Text(loc(.profileCapUseDefault))
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(ProfileCapability.assignable) { cap in
+                        profileRoleRow(cap, credentials: credentials)
+                        if cap != ProfileCapability.assignable.last { Divider() }
+                    }
+                }
+                .background(Color.secondary.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
+            }
+        }
+    }
+
+    private func profileRoleRow(_ capability: ProfileCapability, credentials: [ASCAuthCredential]) -> some View {
+        let selected = ascService.profileMappings[capability]
+        return HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(loc(capability.locKey))
+                    .fontWeight(.medium)
+                Text(loc(capability.helpLocKey))
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 8)
+            Picker("", selection: Binding(
+                get: { selected ?? "" },
+                set: { ascService.setProfile($0.isEmpty ? nil : $0, for: capability) }
+            )) {
+                Text(loc(.profileCapUseDefault)).tag("")
+                ForEach(credentials) { cred in
+                    Text(cred.name).tag(cred.name)
+                }
+            }
+            .labelsHidden()
+            .frame(width: 160)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
     }
 
     // MARK: - Binary

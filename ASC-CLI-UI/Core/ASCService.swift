@@ -9,6 +9,8 @@ final class ASCService: ObservableObject {
     // Configuration
     @Published var ascBinaryPath: String
     @Published var activeProfile: String?
+    /// Dedicated profile per capability (analytics, finance, admin). `.general` uses `activeProfile`.
+    @Published var profileMappings: [ProfileCapability: String] = [:]
 
     // Auth state derived from `asc auth status`
     @Published var authStatus: ASCAuthStatus?
@@ -48,6 +50,7 @@ final class ASCService: ObservableObject {
     private let defaults = UserDefaults.standard
     private let binaryPathKey = "asc.binaryPath"
     private let activeProfileKey = "asc.activeProfile"
+    private let profileMappingsKey = ProfileCapabilitySettings.storageKey
     private let vendorNumberKey = "asc.vendorNumber"
     private let reportsDirKey = "asc.reportsDir"
     private let adsOrgKey = "asc.adsOrg"
@@ -61,6 +64,7 @@ final class ASCService: ObservableObject {
         let stored = UserDefaults.standard.string(forKey: binaryPathKey)
         ascBinaryPath = stored ?? Self.findASCBinary()
         activeProfile = UserDefaults.standard.string(forKey: activeProfileKey)
+        profileMappings = ProfileCapabilitySettings.load()
         vendorNumber = UserDefaults.standard.string(forKey: vendorNumberKey) ?? ""
         reportsDirectory = UserDefaults.standard.string(forKey: reportsDirKey) ?? Self.defaultReportsDirectory
         adsOrg = UserDefaults.standard.string(forKey: adsOrgKey) ?? ""
@@ -71,6 +75,7 @@ final class ASCService: ObservableObject {
     func saveSettings() {
         defaults.set(ascBinaryPath, forKey: binaryPathKey)
         defaults.set(activeProfile, forKey: activeProfileKey)
+        ProfileCapabilitySettings.save(profileMappings, to: defaults)
         defaults.set(vendorNumber, forKey: vendorNumberKey)
         defaults.set(reportsDirectory, forKey: reportsDirKey)
         defaults.set(adsOrg, forKey: adsOrgKey)
@@ -89,15 +94,35 @@ final class ASCService: ObservableObject {
         return candidates.first { FileManager.default.fileExists(atPath: $0) } ?? "/opt/homebrew/bin/asc"
     }
 
+    /// Resolves the credential profile name for a capability. Falls back to `activeProfile`.
+    func profileFor(_ capability: ProfileCapability) -> String? {
+        if capability == .general { return activeProfile }
+        if let mapped = profileMappings[capability], !mapped.isEmpty {
+            return mapped
+        }
+        return activeProfile
+    }
+
+    func setProfile(_ name: String?, for capability: ProfileCapability) {
+        guard capability != .general else { return }
+        if let name, !name.isEmpty {
+            profileMappings[capability] = name
+        } else {
+            profileMappings.removeValue(forKey: capability)
+        }
+        saveSettings()
+    }
+
     // MARK: - Command execution
 
     /// Runs the `asc` binary with the given arguments.
     /// - Parameters:
     ///   - arguments: subcommand arguments (auth/profile/output flags are added automatically).
     ///   - json: when true, append `--output json` unless the caller already specified `--output`.
-    func run(_ arguments: [String], json: Bool = true) async -> CommandResult {
+    ///   - capability: which stored profile to use; defaults to the general (active) profile.
+    func run(_ arguments: [String], json: Bool = true, capability: ProfileCapability = .general) async -> CommandResult {
         let binary = ascBinaryPath
-        let profile = activeProfile
+        let profile = profileFor(capability)
 
         // `--profile` is a GLOBAL flag and must appear before the subcommand; subcommands
         // reject it when it comes after them. `auth` commands manage credentials directly
@@ -175,6 +200,14 @@ final class ASCService: ObservableObject {
         }
 
         authStatus = status
+
+        // Drop mappings for credentials that no longer exist.
+        let validNames = Set(status.credentials.map(\.name))
+        let pruned = ProfileCapabilitySettings.prune(profileMappings, validNames: validNames)
+        if pruned != profileMappings {
+            profileMappings = pruned
+            saveSettings()
+        }
 
         // Default the active profile to the credential marked default if none is selected.
         if activeProfile == nil || !(status.credentials.contains { $0.name == activeProfile }) {
@@ -417,11 +450,48 @@ final class ASCService: ObservableObject {
     // MARK: - Reports
 
     func analyticsRequests(appId: String) async -> CommandResult {
-        await run(["analytics", "requests", "--app", appId, "--pretty"])
+        await run(["analytics", "requests", "--app", appId, "--pretty"], capability: .analytics)
     }
 
-    func createAnalyticsRequest(appId: String) async -> CommandResult {
-        await run(["analytics", "request", "--app", appId, "--access-type", "ONGOING", "--reuse-existing"], json: false)
+    func createAnalyticsRequest(appId: String, accessType: String = "ONGOING") async -> CommandResult {
+        await run(["analytics", "request", "--app", appId, "--access-type", accessType, "--reuse-existing"], json: false, capability: .analytics)
+    }
+
+    /// Lists the reports + instances (and, with segments, their download URLs) for a request,
+    /// optionally filtered to a single date. Used to discover an instance id to download.
+    func analyticsViewReports(requestId: String, date: String? = nil, includeSegments: Bool = true) async -> CommandResult {
+        var args = ["analytics", "view", "--request-id", requestId, "--paginate", "--pretty"]
+        if let date { args += ["--date", date] }
+        if includeSegments { args.append("--include-segments") }
+        return await run(args, capability: .analytics)
+    }
+
+    /// Downloads a single analytics report instance to a temporary file, decompresses it and
+    /// returns the parsed CSV/TSV text alongside the raw command result. Returns `nil` text
+    /// when the download produced no readable file (the caller surfaces the error message).
+    func analyticsDownloadReport(requestId: String, instanceId: String, segmentId: String? = nil) async -> (result: CommandResult, text: String?) {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("asc-analytics-\(UUID().uuidString)", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let outURL = dir.appendingPathComponent("report.csv.gz")
+
+        var args = ["analytics", "download", "--request-id", requestId, "--instance-id", instanceId,
+                    "--output", outURL.path, "--decompress"]
+        if let segmentId { args += ["--segment-id", segmentId] }
+        let result = await run(args, json: false, capability: .analytics)
+
+        // With --decompress the CLI writes a sibling .csv; fall back to scanning the dir.
+        let csvURL = dir.appendingPathComponent("report.csv")
+        var text: String?
+        if let data = try? Data(contentsOf: csvURL) {
+            text = String(decoding: data, as: UTF8.self)
+        } else if let files = try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil),
+                  let anyCSV = files.first(where: { $0.pathExtension.lowercased() == "csv" }),
+                  let data = try? Data(contentsOf: anyCSV) {
+            text = String(decoding: data, as: UTF8.self)
+        }
+        try? FileManager.default.removeItem(at: dir)
+        return (result, text)
     }
 
     func salesReport(date: String, frequency: String, outputPath: String?, decompress: Bool) async -> CommandResult {
@@ -430,7 +500,7 @@ final class ASCService: ObservableObject {
                     "--frequency", frequency, "--date", date]
         if let outputPath { args += ["--output", outputPath] }
         if decompress { args.append("--decompress") }
-        return await run(args, json: false)
+        return await run(args, json: false, capability: .finance)
     }
 
     func financeReport(date: String, region: String, outputPath: String?, decompress: Bool) async -> CommandResult {
@@ -438,11 +508,11 @@ final class ASCService: ObservableObject {
                     "--report-type", "FINANCIAL", "--region", region, "--date", date]
         if let outputPath { args += ["--output", outputPath] }
         if decompress { args.append("--decompress") }
-        return await run(args, json: false)
+        return await run(args, json: false, capability: .finance)
     }
 
     func financeRegions() async -> CommandResult {
-        await run(["finance", "regions", "--output", "table"], json: false)
+        await run(["finance", "regions", "--output", "table"], json: false, capability: .finance)
     }
 
     // MARK: - Build upload & publish
@@ -886,12 +956,12 @@ final class ASCService: ObservableObject {
     // MARK: - Team & devices
 
     func usersList() async -> CommandResult {
-        await run(["users", "list", "--output", "table"], json: false)
+        await run(["users", "list", "--output", "table"], json: false, capability: .admin)
     }
     func usersInvite(email: String, roles: String, allApps: Bool) async -> CommandResult {
         var args = ["users", "invite", "--email", email, "--roles", roles]
         if allApps { args.append("--all-apps") }
-        return await run(args, json: false)
+        return await run(args, json: false, capability: .admin)
     }
     func devicesList() async -> CommandResult {
         await run(["devices", "list", "--output", "table"], json: false)
@@ -939,7 +1009,8 @@ final class ASCService: ObservableObject {
     func insightsWeekly(appId: String, source: String, week: String) async -> CommandResult {
         var args = ["insights", "weekly", "--app", appId, "--source", source, "--week", week]
         if source == "sales", !vendorNumber.isEmpty { args += ["--vendor", vendorNumber] }
-        return await run(args)
+        let capability: ProfileCapability = source == "analytics" ? .analytics : .finance
+        return await run(args, capability: capability)
     }
 
     /// Aggregated sales comparison between two date ranges (e.g. last 30 days vs the previous 30).
@@ -949,6 +1020,6 @@ final class ASCService: ObservableObject {
                     "--from", from, "--from-end", fromEnd, "--to", to, "--to-end", toEnd,
                     "--frequency", frequency]
         if !vendorNumber.isEmpty { args += ["--vendor", vendorNumber] }
-        return await run(args)
+        return await run(args, capability: .finance)
     }
 }

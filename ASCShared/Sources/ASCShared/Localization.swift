@@ -65,6 +65,10 @@ public enum LocKey: String {
     // Settings
     case settingsTitle, secLanguage, language, languageHelp
     case authProfiles, noKeysFound, noKeysDesc, addApiKey, storedInFmt, defaultTag
+    case profileRolesSection, profileRolesDesc
+    case profileCapGeneral, profileCapAnalytics, profileCapFinance, profileCapAdmin
+    case profileCapGeneralHelp, profileCapAnalyticsHelp, profileCapFinanceHelp, profileCapAdminHelp
+    case profileCapUseDefault, profileCapActiveFmt
     case keyIdFmt, ascBinary, binaryFound, binaryNotFound, installHintFmt
     case connection, testConnection, testing, connectionSuccessFmt
     case onboardingSection, replayOnboarding, replayOnboardingDesc, showOnboarding
@@ -127,6 +131,12 @@ public enum LocKey: String {
 
     // Metadata files
     case mdFilesTitle, mdFilesBody, mdPull, mdValidate, mdApply
+
+    // Global online/offline data mode
+    case modeOnline, modeOffline, modeTitle, modeOnlineDesc, modeOfflineDesc, modeHeaderHint
+
+    // Metadata validation result
+    case mdValValid, mdValInvalid, mdValFilesScanned, mdValErrors, mdValWarnings, mdValIssues, mdValNoIssues
 
     // Metadata source mode (online / local folder)
     case mdSource, mdSourceOnline, mdSourceLocal
@@ -245,6 +255,9 @@ public enum LocKey: String {
     case anProceeds, anPayingUsers, anIap, anActiveSubs, anPaidSubs, anMrr, anRetention, anCrashes
     case anChartAcq, anChartRev, anNoChartData, an30dRevenue
     case anAllMetrics, anAnalyticsRestricted, anStatusUnavailable
+    case anNeedRequest
+    case anReportTitle, anReportBody, anReportLoad, anReportCreate
+    case anReportProcessing, anReportForbidden, anReportCreated, anReportLoadedFmt
 
     // Prefetch / overview app picker
     case ovChooseApp, secPrefetch, prefetchEnable, prefetchEnableDesc, prefetchSectionsLabel, prefetchNote
@@ -424,6 +437,23 @@ enum Strings {
         .languageHelp:   ["en": "Choose the interface language.",
                           "de": "Wähle die Sprache der Benutzeroberfläche."],
         .authProfiles:   ["en": "Authentication Profiles", "de": "Authentifizierungsprofile"],
+        .profileRolesSection: ["en": "Profile Roles", "de": "Profil-Rollen"],
+        .profileRolesDesc: ["en": "Assign different API keys to operations that need specific App Store Connect roles. Unassigned roles fall back to the active profile above.",
+                            "de": "Weise verschiedenen Abfragen die passenden API-Schlüssel zu, je nach benötigter App-Store-Connect-Rolle. Nicht zugewiesene Rollen nutzen das aktive Profil oben."],
+        .profileCapGeneral: ["en": "General (default)", "de": "Allgemein (Standard)"],
+        .profileCapAnalytics: ["en": "Analytics", "de": "Analytics"],
+        .profileCapFinance: ["en": "Sales & Finance", "de": "Verkauf & Finanzen"],
+        .profileCapAdmin: ["en": "Team & Admin", "de": "Team & Admin"],
+        .profileCapGeneralHelp: ["en": "Apps, builds, metadata, TestFlight, signing, and most other operations.",
+                                 "de": "Apps, Builds, Metadaten, TestFlight, Signierung und die meisten anderen Vorgänge."],
+        .profileCapAnalyticsHelp: ["en": "App Analytics insights and report requests. Requires Admin or Account Holder role.",
+                                   "de": "App-Analytics-Kennzahlen und Report-Anfragen. Erfordert Admin- oder Account-Holder-Rolle."],
+        .profileCapFinanceHelp: ["en": "Sales and finance reports (vendor number required).",
+                                  "de": "Verkaufs- und Finanzberichte (Lieferantennummer erforderlich)."],
+        .profileCapAdminHelp: ["en": "Team invites and other elevated account operations.",
+                               "de": "Team-Einladungen und andere erweiterte Kontovorgänge."],
+        .profileCapUseDefault: ["en": "Use active profile", "de": "Aktives Profil verwenden"],
+        .profileCapActiveFmt: ["en": "Using profile “%@”", "de": "Verwendet Profil „%@“"],
         .noKeysFound:    ["en": "No API keys found", "de": "Keine API-Schlüssel gefunden"],
         .noKeysDesc:     ["en": "Add an App Store Connect API key to start managing your apps.",
                           "de": "Füge einen App Store Connect API-Schlüssel hinzu, um deine Apps zu verwalten."],
@@ -680,6 +710,25 @@ enum Strings {
         .mdPull:       ["en": "Pull", "de": "Abrufen"],
         .mdValidate:   ["en": "Validate", "de": "Prüfen"],
         .mdApply:      ["en": "Apply", "de": "Anwenden"],
+
+        // Global online/offline data mode
+        .modeOnline:     ["en": "Online", "de": "Online"],
+        .modeOffline:    ["en": "Offline", "de": "Offline"],
+        .modeTitle:      ["en": "Data mode", "de": "Datenmodus"],
+        .modeOnlineDesc: ["en": "Live data from App Store Connect (network requests allowed).",
+                          "de": "Live-Daten von App Store Connect (Netzwerkabrufe erlaubt)."],
+        .modeOfflineDesc: ["en": "Work from local files & cached data — automatic network fetches (prefetch, sync, auto-load) are paused.",
+                           "de": "Arbeitet mit lokalen Dateien & zwischengespeicherten Daten — automatische Netzwerkabrufe (Vorladen, Sync, Auto-Laden) sind pausiert."],
+        .modeHeaderHint: ["en": "Switch data mode (online / offline)", "de": "Datenmodus wechseln (online / offline)"],
+
+        // Metadata validation result
+        .mdValValid:        ["en": "Valid", "de": "Gültig"],
+        .mdValInvalid:      ["en": "Invalid", "de": "Ungültig"],
+        .mdValFilesScanned: ["en": "Files scanned", "de": "Dateien geprüft"],
+        .mdValErrors:       ["en": "Errors", "de": "Fehler"],
+        .mdValWarnings:     ["en": "Warnings", "de": "Warnungen"],
+        .mdValIssues:       ["en": "Issues", "de": "Probleme"],
+        .mdValNoIssues:     ["en": "No issues found.", "de": "Keine Probleme gefunden."],
 
         // Metadata source mode
         .mdSource:       ["en": "Source", "de": "Quelle"],
@@ -1110,6 +1159,20 @@ enum Strings {
         .outCountFmt:    ["en": "%d entries", "de": "%d Einträge"],
         .anAllMetrics:   ["en": "All metrics (raw)", "de": "Alle Kennzahlen (roh)"],
         .anStatusUnavailable: ["en": "unavailable", "de": "nicht verfügbar"],
+        .anNeedRequest:  ["en": "App Analytics reports haven't been generated for this app yet. Request ongoing reports once — Apple then prepares them over roughly the next 1–2 days, after which metrics appear here.",
+                          "de": "Für diese App wurden noch keine App-Analytics-Berichte erzeugt. Fordere die laufenden Berichte einmalig an — Apple bereitet sie dann über etwa 1–2 Tage auf, danach erscheinen die Kennzahlen hier."],
+        .anReportTitle:  ["en": "App Store Analytics (API reports)", "de": "App-Store-Analytics (API-Berichte)"],
+        .anReportBody:   ["en": "Downloads and parses Apple's official analytics report files (impressions, page views, downloads). Requires an API key with Admin/Account Holder role; after the first request Apple prepares the data over ~1–2 days.",
+                          "de": "Lädt und parst Apples offizielle Analytics-Berichtsdateien (Impressionen, Seitenaufrufe, Downloads). Benötigt einen API-Key mit Rolle Admin/Account Holder; nach der ersten Anfrage bereitet Apple die Daten über ~1–2 Tage auf."],
+        .anReportLoad:   ["en": "Load report data", "de": "Berichtsdaten laden"],
+        .anReportCreate: ["en": "Create report requests (snapshot + ongoing)", "de": "Report-Anfragen erstellen (Snapshot + laufend)"],
+        .anReportProcessing: ["en": "Reports were requested but Apple hasn't generated any instances yet. Check back in about a day.",
+                              "de": "Berichte wurden angefordert, aber Apple hat noch keine Instanzen erzeugt. Schau in etwa einem Tag wieder vorbei."],
+        .anReportForbidden: ["en": "This API key isn't allowed to create or read analytics report requests. Use a key with Admin or Account Holder role and App Analytics access.",
+                             "de": "Dieser API-Key darf keine Analytics-Report-Anfragen erstellen oder lesen. Verwende einen Key mit Rolle Admin oder Account Holder und App-Analytics-Zugriff."],
+        .anReportCreated: ["en": "Requested. Apple prepares the reports over roughly the next 1–2 days.",
+                           "de": "Angefordert. Apple bereitet die Berichte über etwa 1–2 Tage auf."],
+        .anReportLoadedFmt: ["en": "Loaded %d rows from report \"%@\".", "de": "%d Zeilen aus Bericht „%@“ geladen."],
         .anAnalyticsRestricted: ["en": "This API key can't read App Analytics reports, so acquisition metrics (impressions, page views, conversion) are unavailable — this is an Apple API restriction, not a bug. Downloads, revenue and subscriptions come from the Sales reports: set a vendor number under Reports. For analytics access, use a key with Admin/Account Holder role and enabled App Analytics reporting.",
                                  "de": "Dieser API-Key darf keine App-Analytics-Berichte lesen, daher sind Akquise-Kennzahlen (Impressionen, Seitenaufrufe, Konversion) nicht verfügbar — das ist eine Apple-API-Beschränkung, kein Fehler. Downloads, Umsatz und Abos stammen aus den Sales-Berichten: hinterlege dazu eine Anbieternummer unter „Berichte“. Für Analytics-Zugriff brauchst du einen Key mit Rolle Admin/Account Holder und aktivierter App-Analytics-Berichterstattung."],
 
