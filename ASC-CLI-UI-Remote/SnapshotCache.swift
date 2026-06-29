@@ -11,7 +11,14 @@ import ASCShared
 ///
 /// All I/O is best-effort: a missing, unreadable or corrupt file simply yields an empty
 /// cache, and write failures are swallowed (the next successful refresh recovers).
-struct SnapshotCache {
+///
+/// `nonisolated`: the project defaults to `MainActor` isolation, but this type holds no UI
+/// state and performs only file I/O. Leaving it main-actor-isolated made the lazy
+/// `static let shared` initializer (a nonisolated context) reach a main-actor-isolated
+/// `init`, which both warns at compile time and traps at runtime ("Main actor-isolated
+/// static property 'shared' can not be referenced from a nonisolated context"). Making it
+/// `nonisolated` & `Sendable` fixes that and keeps disk I/O off the main actor.
+nonisolated struct SnapshotCache: Sendable {
     static let shared = SnapshotCache()
 
     private let fileURL: URL

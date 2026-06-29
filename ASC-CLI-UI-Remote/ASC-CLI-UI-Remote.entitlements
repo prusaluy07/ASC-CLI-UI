@@ -1,24 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-  Phase 3b (CloudKit consumer) entitlements for the iOS target "ASC-CLI-UI-Remote".
-
-  IMPORTANT: Like the macOS Phase 2 file, this is intentionally NOT wired into the
-  target's CODE_SIGN_ENTITLEMENTS build setting. The iCloud container
-  "iCloud.PySaasNow.ASC-CLI-UI" is not provisioned in this headless build, so enabling
-  these entitlements would break automatic code signing / the green build. The CloudKit
-  + push CODE compiles regardless; enabling the capabilities is a documented manual step.
-
-  To enable on a real device (push needs a device — see MOBILE_REMOTE.md):
-    Xcode → target "ASC-CLI-UI-Remote" → Signing & Capabilities → + Capability →
-      iCloud (check CloudKit, add container iCloud.PySaasNow.ASC-CLI-UI)
-      Push Notifications
-      Background Modes (check "Remote notifications")
-  Xcode will then set CODE_SIGN_ENTITLEMENTS to this file (or generate one) and add the
-  UIBackgroundModes "remote-notification" entry to the generated Info.plist.
--->
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>aps-environment</key>
+	<string>development</string>
 	<key>com.apple.developer.icloud-container-identifiers</key>
 	<array>
 		<string>iCloud.PySaasNow.ASC-CLI-UI</string>
@@ -27,7 +12,5 @@
 	<array>
 		<string>CloudKit</string>
 	</array>
-	<key>aps-environment</key>
-	<string>development</string>
 </dict>
 </plist>

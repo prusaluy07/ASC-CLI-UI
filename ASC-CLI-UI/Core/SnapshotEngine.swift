@@ -140,6 +140,26 @@ final class SnapshotEngine: ObservableObject {
             return ["pricing", "current", "--app", appId]
         case .subscriptions:
             return ["subscriptions", "groups", "list", "--app", appId]
+        case .inAppPurchases:
+            return ["iap", "list", "--app", appId, "--pretty"]
+        case .analytics:
+            return ["insights", "weekly", "--app", appId,
+                    "--source", "analytics", "--week", Self.lastCompleteWeekStart()]
         }
+    }
+
+    /// `yyyy-MM-dd` for the Monday of the last fully completed ISO week — the same window the
+    /// macOS Analytics page defaults to, so the mirrored payload matches what the app shows.
+    private static func lastCompleteWeekStart(now: Date = Date()) -> String {
+        var cal = Calendar(identifier: .iso8601)
+        cal.firstWeekday = 2 // Monday
+        let thisWeek = cal.dateInterval(of: .weekOfYear, for: now)?.start ?? now
+        let lastWeek = cal.date(byAdding: .day, value: -7, to: thisWeek) ?? thisWeek
+        let fmt = DateFormatter()
+        fmt.calendar = cal
+        fmt.locale = Locale(identifier: "en_US_POSIX")
+        fmt.timeZone = TimeZone(identifier: "UTC")
+        fmt.dateFormat = "yyyy-MM-dd"
+        return fmt.string(from: lastWeek)
     }
 }

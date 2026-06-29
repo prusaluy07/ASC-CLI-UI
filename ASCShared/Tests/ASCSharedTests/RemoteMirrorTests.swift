@@ -110,6 +110,31 @@ final class RemoteMirrorTests: XCTestCase {
         XCTAssertEqual(RemoteMirror.summarize(section: .betaGroups, payloadJSON: json)["count"], "3")
     }
 
+    func testInAppPurchasesSummaryCounts() {
+        let json = #"{ "data": [ {"id":"x"}, {"id":"y"} ] }"#
+        XCTAssertEqual(RemoteMirror.summarize(section: .inAppPurchases, payloadJSON: json)["count"], "2")
+    }
+
+    func testAnalyticsSummaryExtractsWeekAndMetricAvailability() {
+        let json = """
+        {
+          "appId": "123",
+          "source": { "name": "analytics" },
+          "week": { "start": "2026-06-15", "end": "2026-06-21" },
+          "metrics": [
+            { "name": "completed_requests", "value": 4 },
+            { "name": "reports_available", "status": "unavailable" }
+          ]
+        }
+        """
+        let s = RemoteMirror.summarize(section: .analytics, payloadJSON: json)
+        XCTAssertEqual(s["weekStart"], "2026-06-15")
+        XCTAssertEqual(s["weekEnd"], "2026-06-21")
+        XCTAssertEqual(s["source"], "analytics")
+        XCTAssertEqual(s["metrics"], "2")
+        XCTAssertEqual(s["available"], "1")
+    }
+
     func testSummarizeIsDefensiveOnGarbage() {
         XCTAssertTrue(RemoteMirror.summarize(section: .status, payloadJSON: "not json").isEmpty)
         XCTAssertTrue(RemoteMirror.summarize(section: .versions, payloadJSON: "").isEmpty)

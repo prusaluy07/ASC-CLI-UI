@@ -23,14 +23,15 @@ struct MetadataView: View {
     @State private var showSaveConfirm = false
     @State private var resultText: String?
 
-    // File workflow
+    // File workflow. The local folder path is remembered per app (JSON map of appId → path).
     @State private var metaDir = ""
+    @AppStorage("asc.metaDirs") private var metaDirsRaw = "{}"
     @State private var metaDryRun = true
     @State private var metaRunning = false
     @State private var metaOutput: String?
 
-    // Source mode: 0 = online (ASC), 1 = local folder
-    @State private var sourceMode = 0
+    // Source follows the global app mode: .online = ASC, .offline = local folder.
+    @AppStorage(AppModeSettings.key) private var appMode = AppMode.online
 
     // Agent brief
     @State private var briefGoal = ""
@@ -80,11 +81,10 @@ struct MetadataView: View {
     private var editor: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                sourcePicker
                 pickers
                 filesCard
 
-                if sourceMode == 0 {
+                if appMode == .online {
                     onlineEditor
                     agentBriefCard
                 } else {
@@ -93,22 +93,34 @@ struct MetadataView: View {
             }
             .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .onChange(of: appMode) { _, newValue in
+                if newValue == .offline { reloadLocalFiles() }
+            }
+            .onChange(of: metaDir) { _, _ in persistMetaDir() }
         }
     }
 
-    private var sourcePicker: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(loc(.mdSource)).font(.caption).foregroundStyle(.secondary)
-            Picker("", selection: $sourceMode) {
-                Label(loc(.mdSourceOnline), systemImage: "cloud").tag(0)
-                Label(loc(.mdSourceLocal), systemImage: "folder").tag(1)
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .frame(maxWidth: 360)
-            .onChange(of: sourceMode) { _, newValue in
-                if newValue == 1 { reloadLocalFiles() }
-            }
+    // MARK: - Per-app local folder persistence
+
+    /// The remembered local metadata folder for a given app (empty when none saved).
+    private func storedMetaDir(for appId: String) -> String {
+        guard let data = metaDirsRaw.data(using: .utf8),
+              let dict = try? JSONSerialization.jsonObject(with: data) as? [String: String] else { return "" }
+        return dict[appId] ?? ""
+    }
+
+    /// Saves the current `metaDir` under the selected app id (or clears it when empty).
+    private func persistMetaDir() {
+        guard let appId = selectedApp?.id else { return }
+        var dict: [String: String] = [:]
+        if let data = metaDirsRaw.data(using: .utf8),
+           let existing = try? JSONSerialization.jsonObject(with: data) as? [String: String] {
+            dict = existing
+        }
+        if metaDir.isEmpty { dict.removeValue(forKey: appId) } else { dict[appId] = metaDir }
+        if let data = try? JSONSerialization.data(withJSONObject: dict),
+           let string = String(data: data, encoding: .utf8) {
+            metaDirsRaw = string
         }
     }
 
@@ -305,7 +317,11 @@ struct MetadataView: View {
                 }
                 .disabled(metaDir.isEmpty || metaRunning || selectedVersionString == nil)
                 if let metaOutput {
-                    OutputPanel(title: loc(.output), text: metaOutput, maxHeight: 200)
+                    if let validation = MetadataValidation.parse(metaOutput) {
+                        MetadataValidationResult(validation: validation)
+                    } else {
+                        OutputView(text: metaOutput)
+                    }
                 }
             }
             .padding(6)
@@ -555,6 +571,9 @@ struct MetadataView: View {
 
     private func reload() async {
         guard let app = selectedApp else { return }
+        // Restore this app's remembered local folder before anything else.
+        metaDir = storedMetaDir(for: app.id)
+        if appMode == .offline { reloadLocalFiles() }
         await ascService.loadVersions(for: app.id)
         if selectedVersionId == nil || !(ascService.versions.contains { $0.id == selectedVersionId }) {
             selectedVersionId = ascService.versions.first?.id
@@ -605,5 +624,104 @@ struct MetadataView: View {
             resultText = result.succeeded ? loc(.mdSaved) : result.errorMessage
             if result.succeeded { await loadLocalizations(vid) }
         }
+    }
+}
+
+// MARK: - Validation result card
+
+/// Structured, human-readable rendering of an `asc metadata validate` result: a pass/fail
+/// banner, scan/issue counts, and a color-coded list of issues (errors red, warnings orange).
+struct MetadataValidationResult: View {
+    @EnvironmentObject var loc: LocalizationManager
+    let validation: MetadataValidation
+
+    private var isValid: Bool { validation.valid ?? ((validation.errorCount ?? 0) == 0) }
+    private var tint: Color { isValid ? .green : .red }
+
+    var body: some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 8) {
+                    Image(systemName: isValid ? "checkmark.seal.fill" : "xmark.octagon.fill")
+                        .foregroundStyle(tint)
+                    Text(loc(isValid ? .mdValValid : .mdValInvalid))
+                        .font(.headline).foregroundStyle(tint)
+                    Spacer()
+                }
+
+                HStack(spacing: 16) {
+                    stat(loc(.mdValFilesScanned), "\(validation.filesScanned ?? 0)", .secondary)
+                    stat(loc(.mdValErrors), "\(validation.errorCount ?? 0)",
+                         (validation.errorCount ?? 0) > 0 ? .red : .secondary)
+                    stat(loc(.mdValWarnings), "\(validation.warningCount ?? 0)",
+                         (validation.warningCount ?? 0) > 0 ? .orange : .secondary)
+                }
+
+                if let dir = validation.dir, !dir.isEmpty {
+                    Text(dir)
+                        .font(.system(.caption2, design: .monospaced))
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1).truncationMode(.middle)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                Divider()
+
+                let issues = validation.orderedIssues
+                if issues.isEmpty {
+                    Label(loc(.mdValNoIssues), systemImage: "checkmark.circle")
+                        .font(.callout).foregroundStyle(.secondary)
+                } else {
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(issues) { issue in issueRow(issue) }
+                    }
+                }
+            }
+            .padding(6)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } label: {
+            Label(loc(.mdValIssues), systemImage: "checklist")
+        }
+    }
+
+    private func stat(_ title: String, _ value: String, _ color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(value).font(.title3.weight(.semibold)).monospacedDigit().foregroundStyle(color)
+            Text(title).font(.caption2).foregroundStyle(.secondary)
+        }
+    }
+
+    private func issueRow(_ issue: MetadataValidation.Issue) -> some View {
+        let color: Color = issue.isError ? .red : .orange
+        return HStack(alignment: .top, spacing: 8) {
+            Image(systemName: issue.isError ? "exclamationmark.circle.fill" : "exclamationmark.triangle.fill")
+                .foregroundStyle(color)
+                .font(.callout)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(issue.message ?? "—").font(.callout)
+                HStack(spacing: 6) {
+                    if let field = issue.field, !field.isEmpty {
+                        Text(field)
+                            .font(.caption2.weight(.medium))
+                            .padding(.horizontal, 6).padding(.vertical, 1)
+                            .background(color.opacity(0.15), in: Capsule())
+                            .foregroundStyle(color)
+                    }
+                    if let scope = issue.scope, !scope.isEmpty {
+                        Text(scope).font(.caption2).foregroundStyle(.tertiary)
+                    }
+                }
+                if let file = issue.file, !file.isEmpty {
+                    Text(file)
+                        .font(.system(.caption2, design: .monospaced))
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1).truncationMode(.middle)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(8)
+        .background(color.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
     }
 }

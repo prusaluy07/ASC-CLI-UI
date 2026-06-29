@@ -39,6 +39,7 @@ enum SettingsPresentation {
 
 struct SettingsView: View {
     var presentation: SettingsPresentation = .sheet
+    var initialPane: SettingsPane? = nil
 
     @EnvironmentObject var ascService: ASCService
     @EnvironmentObject var loc: LocalizationManager
@@ -57,6 +58,7 @@ struct SettingsView: View {
             }
         }
         .task { await ascService.refreshAuthStatus() }
+        .onAppear { if let initialPane { selection = initialPane } }
         .sheet(isPresented: $showAddKey) {
             AddKeyView()
                 .environmentObject(ascService)
@@ -237,6 +239,15 @@ private struct SettingsGeneralPane: View {
                     .foregroundStyle(.tertiary)
             }
         }
+
+        Divider().padding(.vertical, 4)
+
+        SettingsSubsection(loc(.ascTimeout), subtitle: loc(.ascTimeoutDesc))
+        Stepper(value: $ascService.requestTimeoutSeconds, in: 15...600, step: 15) {
+            Text(loc(.ascTimeoutValueFmt, ascService.requestTimeoutSeconds))
+                .monospacedDigit()
+        }
+        .onChange(of: ascService.requestTimeoutSeconds) { _, _ in ascService.saveSettings() }
 
         Divider().padding(.vertical, 4)
 
@@ -564,25 +575,6 @@ private struct SettingsRemoteSyncPane: View {
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
         }
-    }
-}
-
-// MARK: - Onboarding
-
-private struct SettingsOnboardingPane: View {
-    @EnvironmentObject var loc: LocalizationManager
-    @Environment(\.dismiss) private var dismiss
-
-    @AppStorage("asc.hasOnboarded") private var hasOnboarded = false
-
-    var body: some View {
-        SettingsPaneHeader(loc(.onboardingSection), subtitle: loc(.replayOnboardingDesc))
-
-        Button(loc(.showOnboarding)) {
-            hasOnboarded = false
-            dismiss()
-        }
-        .buttonStyle(.borderedProminent)
     }
 }
 

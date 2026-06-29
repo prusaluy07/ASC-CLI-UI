@@ -103,6 +103,7 @@ struct SectionHeader<Trailing: View>: View {
                 }
             }
             Spacer()
+            ModeBadge()
             trailing()
         }
         .padding(.horizontal, 20)

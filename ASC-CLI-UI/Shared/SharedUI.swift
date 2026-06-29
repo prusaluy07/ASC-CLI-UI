@@ -83,6 +83,7 @@ struct CommandScreen<Content: View>: View {
 /// Pass `autoRun` to load the section's data automatically when it first appears.
 struct CommandSection<Content: View>: View {
     @EnvironmentObject var loc: LocalizationManager
+    @AppStorage(AppModeSettings.key) private var appMode = AppMode.online
     let title: String
     var systemImage: String = "list.bullet"
     var autoRun: (() async -> CommandResult)? = nil
@@ -117,7 +118,8 @@ struct CommandSection<Content: View>: View {
         .background(RoundedRectangle(cornerRadius: 12).fill(Color.secondary.opacity(0.05)))
         .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.secondary.opacity(0.10)))
         .task(id: autoRunToken) {
-            if let autoRun, loadedToken != autoRunToken {
+            // Offline mode pauses automatic loads; the manual buttons still work.
+            if let autoRun, appMode == .online, loadedToken != autoRunToken {
                 loadedToken = autoRunToken
                 output = nil
                 runOperation(autoRun)
@@ -236,6 +238,96 @@ extension ASCService.PrefetchSection {
         case .builds:     return .secBuilds
         case .testflight: return .secTestFlight
         case .release:    return .secRelease
+        }
+    }
+}
+
+// MARK: - Global online/offline mode
+
+/// AppStorage location for the global ``AppMode`` (online vs. offline). Read with
+/// `@AppStorage(AppModeSettings.key) var mode = AppMode.online` anywhere — it propagates to
+/// every header badge automatically.
+enum AppModeSettings {
+    static let key = "asc.globalMode"
+}
+
+extension Notification.Name {
+    /// Posted (e.g. from the analytics permission banner) to open Settings on the Profiles pane
+    /// so the user can assign an Admin/Account Holder key to a role.
+    static let ascOpenProfileSettings = Notification.Name("asc.openProfileSettings")
+}
+
+extension AppMode {
+    /// Header/badge tint per the design: turquoise for online, magenta/pink for offline.
+    var tint: Color {
+        switch self {
+        case .online:  return Color(red: 0.00, green: 0.78, blue: 0.74) // turquoise
+        case .offline: return Color(red: 0.90, green: 0.16, blue: 0.55) // magenta / pink
+        }
+    }
+}
+
+/// Small colored capsule embedded in every page header, indicating the active global data
+/// mode and toggling it on tap.
+struct ModeBadge: View {
+    @EnvironmentObject var loc: LocalizationManager
+    @AppStorage(AppModeSettings.key) private var mode = AppMode.online
+
+    var body: some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.15)) { mode = mode.toggled }
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: mode.iconName).font(.caption2.weight(.bold))
+                Text(loc(mode.locKey)).font(.caption.weight(.semibold))
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .foregroundStyle(mode.tint)
+            .background(mode.tint.opacity(0.16), in: Capsule())
+            .overlay(Capsule().strokeBorder(mode.tint, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .help(loc(.modeHeaderHint))
+    }
+}
+
+/// The primary online/offline selector shown at the top of the Overview, where the global
+/// data mode is declared. Updates the same AppStorage value the header badges observe.
+struct ModeSelector: View {
+    @EnvironmentObject var loc: LocalizationManager
+    @AppStorage(AppModeSettings.key) private var mode = AppMode.online
+
+    var body: some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 10) {
+                    ForEach(AppMode.allCases) { option in
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.15)) { mode = option }
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: option.iconName)
+                                Text(loc(option.locKey)).fontWeight(.semibold)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .foregroundStyle(mode == option ? option.tint : Color.secondary)
+                            .background((mode == option ? option.tint.opacity(0.20) : Color.secondary.opacity(0.08)), in: Capsule())
+                            .overlay(Capsule().strokeBorder(mode == option ? option.tint : Color.secondary.opacity(0.20),
+                                                            lineWidth: mode == option ? 1.5 : 1))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                Text(loc(mode.descriptionKey))
+                    .font(.caption).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(6)
+        } label: {
+            Label(loc(.modeTitle), systemImage: "dot.radiowaves.left.and.right")
         }
     }
 }

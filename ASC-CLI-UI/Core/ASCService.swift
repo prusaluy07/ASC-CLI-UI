@@ -43,6 +43,11 @@ final class ASCService: ObservableObject {
     // Apple Ads (separate Apple Ads OAuth credentials; org used by ads commands)
     @Published var adsOrg: String
 
+    /// Per-request HTTP timeout passed to `asc` as `ASC_TIMEOUT`. Analytics `view`/`compare`
+    /// calls hit slow Apple endpoints and fail with "context deadline exceeded" at the default,
+    /// so we default high and let the user raise it further.
+    @Published var requestTimeoutSeconds: Int
+
     // UI state
     @Published var isLoading: Bool = false
     @Published var lastError: String?
@@ -54,6 +59,7 @@ final class ASCService: ObservableObject {
     private let vendorNumberKey = "asc.vendorNumber"
     private let reportsDirKey = "asc.reportsDir"
     private let adsOrgKey = "asc.adsOrg"
+    private let requestTimeoutKey = "asc.requestTimeout"
 
     static var defaultReportsDirectory: String {
         FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first?.path
@@ -68,6 +74,8 @@ final class ASCService: ObservableObject {
         vendorNumber = UserDefaults.standard.string(forKey: vendorNumberKey) ?? ""
         reportsDirectory = UserDefaults.standard.string(forKey: reportsDirKey) ?? Self.defaultReportsDirectory
         adsOrg = UserDefaults.standard.string(forKey: adsOrgKey) ?? ""
+        let storedTimeout = UserDefaults.standard.object(forKey: requestTimeoutKey) as? Int
+        requestTimeoutSeconds = storedTimeout ?? 120
     }
 
     // MARK: - Settings
@@ -79,6 +87,7 @@ final class ASCService: ObservableObject {
         defaults.set(vendorNumber, forKey: vendorNumberKey)
         defaults.set(reportsDirectory, forKey: reportsDirKey)
         defaults.set(adsOrg, forKey: adsOrgKey)
+        defaults.set(requestTimeoutSeconds, forKey: requestTimeoutKey)
     }
 
     var binaryExists: Bool {
@@ -138,6 +147,7 @@ final class ASCService: ObservableObject {
         }
 
         let finalArgs = args
+        let timeoutSeconds = max(15, requestTimeoutSeconds)
         return await Task.detached(priority: .userInitiated) {
             let process = Process()
             process.executableURL = URL(fileURLWithPath: binary)
@@ -147,6 +157,9 @@ final class ASCService: ObservableObject {
             var env = ProcessInfo.processInfo.environment
             let extraPaths = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
             env["PATH"] = (env["PATH"].map { "\($0):\(extraPaths)" }) ?? extraPaths
+            // Raise the per-request timeout; analytics `view`/`compare` otherwise fail with
+            // "context deadline exceeded" against Apple's slow analytics endpoints.
+            env["ASC_TIMEOUT"] = "\(timeoutSeconds)s"
             process.environment = env
 
             let outPipe = Pipe()

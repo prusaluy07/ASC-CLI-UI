@@ -23,19 +23,25 @@ public enum MirrorSection: String, CaseIterable, Identifiable, Codable, Sendable
     case pricing
     /// Subscription groups (`asc subscriptions groups list`).
     case subscriptions
+    /// In-app purchases (`asc iap list`).
+    case inAppPurchases
+    /// Weekly analytics insights (`asc insights weekly --source analytics`).
+    case analytics
 
     public var id: String { rawValue }
 
     /// Localization key for the human-facing section name (reuses existing keys).
     public var locKey: LocKey {
         switch self {
-        case .status:        return .secRelease
-        case .versions:      return .secVersions
-        case .builds:        return .secBuilds
-        case .betaGroups:    return .secTestFlight
-        case .reviews:       return .secReviews
-        case .pricing:       return .secPricing
-        case .subscriptions: return .secSubscriptions
+        case .status:          return .secRelease
+        case .versions:        return .secVersions
+        case .builds:          return .secBuilds
+        case .betaGroups:      return .secTestFlight
+        case .reviews:         return .secReviews
+        case .pricing:         return .secPricing
+        case .subscriptions:   return .secSubscriptions
+        case .inAppPurchases:  return .secIAP
+        case .analytics:       return .secAnalytics
         }
     }
 }
@@ -135,13 +141,15 @@ public enum RemoteMirror {
               let root = try? JSONDecoder().decode(JSONValue.self, from: data) else { return [:] }
 
         switch section {
-        case .status:        return statusSummary(root)
-        case .versions:      return versionsSummary(root)
-        case .builds:        return buildsSummary(root)
-        case .betaGroups:    return collectionSummary(root)
-        case .subscriptions: return collectionSummary(root)
-        case .pricing:       return collectionSummary(root)
-        case .reviews:       return reviewsSummary(root)
+        case .status:          return statusSummary(root)
+        case .versions:        return versionsSummary(root)
+        case .builds:          return buildsSummary(root)
+        case .betaGroups:      return collectionSummary(root)
+        case .subscriptions:   return collectionSummary(root)
+        case .pricing:         return collectionSummary(root)
+        case .inAppPurchases:  return collectionSummary(root)
+        case .reviews:         return reviewsSummary(root)
+        case .analytics:       return analyticsSummary(root)
         }
     }
 
@@ -189,6 +197,22 @@ public enum RemoteMirror {
 
     private static func collectionSummary(_ root: JSONValue) -> [String: String] {
         ["count": String(items(root).count)]
+    }
+
+    /// Headline values for a weekly analytics insights payload: the reported week range,
+    /// the source name, and how many metrics actually carry a value vs. are unavailable
+    /// (so the consumer can hint at API-key analytics restrictions at a glance).
+    private static func analyticsSummary(_ root: JSONValue) -> [String: String] {
+        var s: [String: String] = [:]
+        if let start = root["week"]?["start"]?.stringValue { s["weekStart"] = start }
+        if let end = root["week"]?["end"]?.stringValue { s["weekEnd"] = end }
+        if let source = root["source"]?["name"]?.stringValue { s["source"] = source }
+        if let metrics = root["metrics"]?.arrayValue {
+            let available = metrics.filter { $0["value"] != nil }.count
+            s["metrics"] = String(metrics.count)
+            s["available"] = String(available)
+        }
+        return s
     }
 
     /// Returns the primary array of records from either a bare array or a `{ data: [...] }`

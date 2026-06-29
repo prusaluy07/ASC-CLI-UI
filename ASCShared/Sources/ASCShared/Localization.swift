@@ -70,6 +70,7 @@ public enum LocKey: String {
     case profileCapGeneralHelp, profileCapAnalyticsHelp, profileCapFinanceHelp, profileCapAdminHelp
     case profileCapUseDefault, profileCapActiveFmt
     case keyIdFmt, ascBinary, binaryFound, binaryNotFound, installHintFmt
+    case ascTimeout, ascTimeoutDesc, ascTimeoutValueFmt
     case connection, testConnection, testing, connectionSuccessFmt
     case onboardingSection, replayOnboarding, replayOnboardingDesc, showOnboarding
 
@@ -258,6 +259,7 @@ public enum LocKey: String {
     case anNeedRequest
     case anReportTitle, anReportBody, anReportLoad, anReportCreate
     case anReportProcessing, anReportForbidden, anReportCreated, anReportLoadedFmt
+    case anAdminRequiredTitle, anAdminRequiredBody, anAnalyticsUsingProfileFmt, anOpenProfileSettings
 
     // Prefetch / overview app picker
     case ovChooseApp, secPrefetch, prefetchEnable, prefetchEnableDesc, prefetchSectionsLabel, prefetchNote
@@ -467,6 +469,10 @@ enum Strings {
         .binaryNotFound: ["en": "Binary not found at this path",
                           "de": "Programm unter diesem Pfad nicht gefunden"],
         .installHintFmt: ["en": "Install with: %@", "de": "Installieren mit: %@"],
+        .ascTimeout:     ["en": "Request timeout", "de": "Anfrage-Timeout"],
+        .ascTimeoutDesc: ["en": "Maximum time per API call. Raise this if analytics or compare commands fail with “context deadline exceeded”.",
+                          "de": "Maximale Dauer pro API-Aufruf. Erhöhe diesen Wert, wenn Analyse- oder Vergleichsbefehle mit „context deadline exceeded“ fehlschlagen."],
+        .ascTimeoutValueFmt: ["en": "%d seconds", "de": "%d Sekunden"],
         .connection:     ["en": "Connection",  "de": "Verbindung"],
         .testConnection: ["en": "Test Connection", "de": "Verbindung testen"],
         .testing:        ["en": "Testing…",    "de": "Teste…"],
@@ -1176,6 +1182,13 @@ enum Strings {
         .anReportLoadedFmt: ["en": "Loaded %d rows from report \"%@\".", "de": "%d Zeilen aus Bericht „%@“ geladen."],
         .anAnalyticsRestricted: ["en": "This API key can't read App Analytics reports, so acquisition metrics (impressions, page views, conversion) are unavailable — this is an Apple API restriction, not a bug. Downloads, revenue and subscriptions come from the Sales reports: set a vendor number under Reports. For analytics access, use a key with Admin/Account Holder role and enabled App Analytics reporting.",
                                  "de": "Dieser API-Key darf keine App-Analytics-Berichte lesen, daher sind Akquise-Kennzahlen (Impressionen, Seitenaufrufe, Konversion) nicht verfügbar — das ist eine Apple-API-Beschränkung, kein Fehler. Downloads, Umsatz und Abos stammen aus den Sales-Berichten: hinterlege dazu eine Anbieternummer unter „Berichte“. Für Analytics-Zugriff brauchst du einen Key mit Rolle Admin/Account Holder und aktivierter App-Analytics-Berichterstattung."],
+        .anAdminRequiredTitle: ["en": "Admin API key required for analytics",
+                                "de": "Admin-API-Key für Analyse erforderlich"],
+        .anAdminRequiredBody: ["en": "Creating and reading App Analytics report requests requires an API key with the Admin or Account Holder role. Add such a key under Settings → Profiles and assign it to the Analytics role — day-to-day operations can keep using your regular key.",
+                               "de": "Das Erstellen und Lesen von App-Analytics-Berichtsanfragen erfordert einen API-Key mit der Rolle Admin oder Account Holder. Lege einen solchen Key unter Einstellungen → Profile an und ordne ihn der Rolle „Analyse“ zu — der Alltagsbetrieb kann weiter deinen normalen Key nutzen."],
+        .anAnalyticsUsingProfileFmt: ["en": "Analytics currently uses profile: %@",
+                                      "de": "Analyse nutzt aktuell Profil: %@"],
+        .anOpenProfileSettings: ["en": "Open profile settings", "de": "Profileinstellungen öffnen"],
 
         // Remote sync (CloudKit mirror)
         .secRemoteSync:  ["en": "Remote sync", "de": "Remote-Synchronisierung"],

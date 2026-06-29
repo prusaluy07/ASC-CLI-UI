@@ -59,13 +59,15 @@ struct AppSectionsView: View {
 
     private func icon(for section: MirrorSection) -> String {
         switch section {
-        case .status:        return "checkmark.seal"
-        case .versions:      return "number"
-        case .builds:        return "hammer"
-        case .betaGroups:    return "person.3"
-        case .reviews:       return "star"
-        case .pricing:       return "tag"
-        case .subscriptions: return "repeat"
+        case .status:         return "checkmark.seal"
+        case .versions:       return "number"
+        case .builds:         return "hammer"
+        case .betaGroups:     return "person.3"
+        case .reviews:        return "star"
+        case .pricing:        return "tag"
+        case .subscriptions:  return "repeat"
+        case .inAppPurchases: return "cart"
+        case .analytics:      return "chart.xyaxis.line"
         }
     }
 }

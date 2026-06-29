@@ -126,12 +126,14 @@ struct ContentView: View {
     @AppStorage(RemoteSyncSettings.enabledKey) private var syncEnabled = RemoteSyncSettings.defaultEnabled
     @AppStorage(RemoteSyncSettings.intervalKey) private var syncIntervalRaw = RemoteSyncSettings.defaultInterval
     @AppStorage(RemoteSyncSettings.sectionsKey) private var syncSectionsRaw = RemoteSyncSettings.defaultRaw
+    @AppStorage(AppModeSettings.key) private var appMode = AppMode.online
 
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var selectedItem: SidebarItem? = .overview
     @State private var selectedApp: ASCApp?
     @State private var showSettings = false
+    @State private var settingsInitialPane: SettingsPane?
 
     var body: some View {
         NavigationSplitView {
@@ -151,9 +153,14 @@ struct ContentView: View {
         .onChange(of: syncEnabled) { _, _ in configureSync() }
         .onChange(of: syncIntervalRaw) { _, _ in configureSync() }
         .onChange(of: syncSectionsRaw) { _, _ in configureSync() }
+        .onChange(of: appMode) { _, newMode in
+            // Offline pauses automatic network work; online resumes sync + warms the app.
+            configureSync()
+            if newMode == .online { triggerPrefetch(for: selectedApp) }
+        }
         .onChange(of: scenePhase) { _, phase in
-            // Mirror on foreground (throttled inside the engine) when enabled.
-            if phase == .active, syncEnabled {
+            // Mirror on foreground (throttled inside the engine) when enabled and online.
+            if phase == .active, syncEnabled, appMode == .online {
                 Task { await syncEngine.captureCurrent(manual: false) }
             }
         }
@@ -162,11 +169,15 @@ struct ContentView: View {
             configureSync()
         }
         .sheet(isPresented: $showSettings) {
-            SettingsView()
+            SettingsView(initialPane: settingsInitialPane)
                 .environmentObject(ascService)
                 .environmentObject(loc)
                 .environmentObject(cloudSync)
                 .environmentObject(syncEngine)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .ascOpenProfileSettings)) { _ in
+            settingsInitialPane = .profiles
+            showSettings = true
         }
         .sheet(isPresented: Binding(
             get: { !hasOnboarded },
@@ -187,6 +198,7 @@ struct ContentView: View {
             ToolbarItemGroup(placement: .primaryAction) {
                 appPicker
                 Button {
+                    settingsInitialPane = nil
                     showSettings = true
                 } label: {
                     Image(systemName: "gearshape")
@@ -205,15 +217,17 @@ struct ContentView: View {
     }
 
     private func triggerPrefetch(for app: ASCApp?) {
-        guard prefetchEnabled, let app else { return }
+        // No automatic network fetches while offline.
+        guard prefetchEnabled, appMode == .online, let app else { return }
         let sections = PrefetchSettings.decode(prefetchSectionsRaw)
         guard !sections.isEmpty else { return }
         Task { await ascService.prefetch(appId: app.id, sections: sections) }
     }
 
     private func configureSync() {
+        // Periodic CloudKit mirroring is a network activity → suppressed while offline.
         syncEngine.configure(
-            enabled: syncEnabled,
+            enabled: syncEnabled && appMode == .online,
             interval: RemoteSyncSettings.interval(syncIntervalRaw),
             sections: MirrorSection.decode(syncSectionsRaw)
         )
@@ -259,6 +273,7 @@ struct ContentView: View {
 
     private var configurationStatus: some View {
         Button {
+            settingsInitialPane = .profiles
             showSettings = true
         } label: {
             HStack(spacing: 8) {
@@ -294,7 +309,7 @@ struct ContentView: View {
         if selectedItem == .help {
             HelpView()
         } else if !ascService.isConfigured {
-            NotConfiguredView { showSettings = true }
+            NotConfiguredView { settingsInitialPane = .profiles; showSettings = true }
         } else if let item = selectedItem {
             switch item {
             case .overview:

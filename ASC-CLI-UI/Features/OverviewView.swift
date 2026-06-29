@@ -24,6 +24,9 @@ struct OverviewView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
+                    ModeSelector()
+                        .padding(.horizontal, 20)
+
                     LazyVGrid(columns: columns, spacing: 16) {
                         StatCard(
                             title: loc(.statApps),

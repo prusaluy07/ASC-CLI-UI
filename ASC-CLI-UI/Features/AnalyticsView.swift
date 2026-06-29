@@ -115,6 +115,7 @@ struct AnalyticsView: View {
     @EnvironmentObject var loc: LocalizationManager
     let selectedApp: ASCApp?
 
+    @AppStorage(AppModeSettings.key) private var appMode = AppMode.online
     @State private var weekStart: Date = AnalyticsView.defaultWeekStart()
     @State private var resolved: [LocKey: AnalyticsMetric] = [:]
     @State private var revenue30: [LocKey: AnalyticsMetric] = [:]
@@ -122,6 +123,15 @@ struct AnalyticsView: View {
     @State private var rawText = ""
     @State private var isLoading = false
     @State private var loadedOnce = false
+
+    // App Store Analytics API report pipeline (requests → view → download → parse).
+    @State private var isLoadingReport = false
+    @State private var reportStatus: String?
+    @State private var reportInstances: [AnalyticsInstanceRef] = []
+    @State private var reportRaw = ""
+    /// Set when an analytics API call is rejected because the key lacks the Admin/Account
+    /// Holder role, so we can surface the "assign an Admin profile" guidance.
+    @State private var reportForbidden = false
 
     private static let dateFmt: DateFormatter = {
         let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; f.locale = Locale(identifier: "en_US_POSIX"); return f
@@ -150,8 +160,14 @@ struct AnalyticsView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
                         controls
+                        if analyticsRestricted || reportForbidden {
+                            permissionBanner
+                        }
                         if analyticsRestricted {
-                            banner(loc(.anAnalyticsRestricted), icon: "exclamationmark.triangle", tint: .orange)
+                            banner(loc(.anAnalyticsRestricted), icon: "info.circle", tint: .blue)
+                        }
+                        if analyticsNeedsRequest {
+                            requestBanner
                         }
                         if ascService.vendorNumber.isEmpty {
                             banner(loc(.anNeedVendorSales), icon: "info.circle", tint: .blue)
@@ -170,6 +186,8 @@ struct AnalyticsView: View {
 
                         if !revenue30.isEmpty { revenue30Section }
 
+                        reportSection
+
                         if !allMetrics.isEmpty {
                             DisclosureGroup(loc(.anAllMetrics)) { allMetricsList }
                                 .font(.callout)
@@ -187,13 +205,23 @@ struct AnalyticsView: View {
             }
         }
         .task(id: selectedApp?.id) {
-            if selectedApp != nil && !loadedOnce { await load() }
+            if selectedApp != nil && !loadedOnce && appMode == .online { await load() }
         }
     }
 
     private var subtitleText: String? {
         guard let app = selectedApp else { return nil }
-        return "\(app.name) · " + loc(.anWeekRangeFmt, Self.dateFmt.string(from: weekStart))
+        return "\(app.name) · " + loc(.anWeekRangeFmt, Self.dateFmt.string(from: weekMonday))
+    }
+
+    /// The Monday of the week containing `weekStart`. App Store Connect weekly reports must
+    /// be addressed by a week that ends on a Sunday (i.e. starts on a Monday); passing any
+    /// other weekday makes the sales source fail with "Invalid date. … specify the date of
+    /// the Sunday ending the desired week." Normalizing here lets the date picker stay free.
+    private var weekMonday: Date {
+        var cal = Calendar(identifier: .iso8601)
+        cal.firstWeekday = 2 // Monday
+        return cal.dateInterval(of: .weekOfYear, for: weekStart)?.start ?? weekStart
     }
 
     private var controls: some View {
@@ -248,6 +276,239 @@ struct AnalyticsView: View {
         allMetrics.contains { ($0.reason ?? "").lowercased().contains("not permitted") }
     }
 
+    /// True when the analytics source works but no report requests have been created yet
+    /// (Apple returns "no completed analytics report requests found"). Distinct from
+    /// `analyticsRestricted`, which means the key lacks analytics permission entirely.
+    private var analyticsNeedsRequest: Bool {
+        !analyticsRestricted &&
+        allMetrics.contains { ($0.reason ?? "").lowercased().contains("no completed analytics report requests") }
+    }
+
+    private var requestBanner: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label(loc(.anNeedRequest), systemImage: "clock.arrow.circlepath")
+                .font(.caption).foregroundStyle(.secondary)
+            Button {
+                Task { await requestAnalytics() }
+            } label: {
+                Label(loc(.rpCreateRequest), systemImage: "plus.rectangle.on.folder")
+            }
+            .controlSize(.small)
+            .disabled(isLoading || selectedApp == nil)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.blue.opacity(0.10), in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    /// Creates the one-time ONGOING analytics report request, then reloads so the new
+    /// request shows up in the raw output (metrics still take ~1–2 days to populate).
+    private func requestAnalytics() async {
+        guard let app = selectedApp else { return }
+        isLoading = true
+        let result = await ascService.createAnalyticsRequest(appId: app.id)
+        isLoading = false
+        rawText = "$ asc analytics request --access-type ONGOING\n"
+            + (result.succeeded ? result.output : result.errorMessage) + "\n\n" + rawText
+    }
+
+    // MARK: - App Store Analytics API report pipeline
+
+    private var reportSection: some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(loc(.anReportBody)).font(.caption).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                HStack(spacing: 10) {
+                    Button {
+                        Task { await loadReportData() }
+                    } label: {
+                        if isLoadingReport {
+                            HStack(spacing: 6) { ProgressView().controlSize(.small); Text(loc(.anReportLoad)) }
+                        } else {
+                            Label(loc(.anReportLoad), systemImage: "arrow.down.doc")
+                        }
+                    }
+                    .disabled(isLoadingReport || selectedApp == nil)
+
+                    Button {
+                        Task { await createReportRequests() }
+                    } label: {
+                        Label(loc(.anReportCreate), systemImage: "plus.rectangle.on.folder")
+                    }
+                    .disabled(isLoadingReport || selectedApp == nil)
+                    Spacer()
+                }
+                if let reportStatus {
+                    Label(reportStatus, systemImage: "info.circle")
+                        .font(.caption).foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                if !reportInstances.isEmpty {
+                    VStack(alignment: .leading, spacing: 4) {
+                        ForEach(reportInstances.prefix(6)) { inst in
+                            Text("• \(inst.reportName ?? inst.instanceId) · \(inst.granularity ?? "—") · \(inst.processingDate ?? "—")")
+                                .font(.caption2.monospaced()).foregroundStyle(.tertiary).lineLimit(1)
+                        }
+                    }
+                }
+                if !reportRaw.isEmpty {
+                    DisclosureGroup(loc(.anRaw)) {
+                        OutputPanel(title: loc(.output), text: reportRaw, maxHeight: 280)
+                    }
+                    .font(.callout)
+                }
+            }
+            .padding(6)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } label: {
+            Label(loc(.anReportTitle), systemImage: "chart.bar.doc.horizontal")
+        }
+    }
+
+    /// Creates both the one-time-snapshot (historical) and ongoing analytics report requests.
+    private func createReportRequests() async {
+        guard let app = selectedApp else { return }
+        isLoadingReport = true
+        defer { isLoadingReport = false }
+        let snapshot = await ascService.createAnalyticsRequest(appId: app.id, accessType: "ONE_TIME_SNAPSHOT")
+        let ongoing = await ascService.createAnalyticsRequest(appId: app.id, accessType: "ONGOING")
+        reportRaw = "$ asc analytics request --access-type ONE_TIME_SNAPSHOT\n" + outText(snapshot) + "\n\n"
+            + "$ asc analytics request --access-type ONGOING\n" + outText(ongoing) + "\n\n" + reportRaw
+        if snapshot.succeeded || ongoing.succeeded {
+            reportStatus = loc(.anReportCreated)
+            reportForbidden = false
+        } else if isForbidden(snapshot) || isForbidden(ongoing) {
+            reportStatus = loc(.anReportForbidden)
+            reportForbidden = true
+        } else {
+            reportStatus = snapshot.errorMessage
+        }
+    }
+
+    /// Runs the full report pipeline: list requests → view instances for the week →
+    /// download the newest instance → parse it → merge the metrics into the cards.
+    private func loadReportData() async {
+        guard let app = selectedApp else { return }
+        isLoadingReport = true
+        defer { isLoadingReport = false }
+        reportRaw = ""
+        reportInstances = []
+        reportForbidden = false
+
+        let requests = await ascService.analyticsRequests(appId: app.id)
+        reportRaw += "$ asc analytics requests\n" + outText(requests) + "\n\n"
+        guard requests.succeeded else {
+            reportForbidden = isForbidden(requests)
+            reportStatus = reportForbidden ? loc(.anReportForbidden) : requests.errorMessage
+            return
+        }
+        guard let requestId = Self.firstRequestId(requests.output) else {
+            reportStatus = loc(.anNeedRequest)
+            return
+        }
+
+        let date = Self.dateFmt.string(from: weekMonday)
+        let view = await ascService.analyticsViewReports(requestId: requestId, date: date)
+        reportRaw += "$ asc analytics view --request-id \(requestId) --date \(date)\n" + outText(view) + "\n\n"
+        guard view.succeeded else {
+            reportForbidden = isForbidden(view)
+            reportStatus = reportForbidden ? loc(.anReportForbidden) : view.errorMessage
+            return
+        }
+
+        let instances = AnalyticsReportLocator.instances(fromViewJSON: view.output)
+        reportInstances = instances
+        guard let instance = instances.first else {
+            reportStatus = loc(.anReportProcessing)
+            return
+        }
+
+        let download = await ascService.analyticsDownloadReport(
+            requestId: requestId, instanceId: instance.instanceId, segmentId: instance.segmentIds.first)
+        reportRaw += "$ asc analytics download --instance-id \(instance.instanceId)\n" + outText(download.result) + "\n\n"
+        guard let csv = download.text, !csv.isEmpty else {
+            reportForbidden = isForbidden(download.result)
+            reportStatus = reportForbidden ? loc(.anReportForbidden) : download.result.errorMessage
+            return
+        }
+
+        let table = AnalyticsReportTable(text: csv)
+        let metrics = AnalyticsReportSummarizer.metrics(from: table)
+        reportRaw += "Columns: \(table.columns.joined(separator: ", "))\nRows: \(table.rows.count)\n"
+
+        let resolvedFromReport = AnalyticsCatalog.resolve(metrics)
+        for (key, metric) in resolvedFromReport where metric.value != nil {
+            resolved[key] = metric
+        }
+        deriveConversionIfPossible()
+        allMetrics += metrics
+        reportStatus = loc(.anReportLoadedFmt, table.rows.count, instance.reportName ?? instance.instanceId)
+    }
+
+    /// Derives a conversion-rate card from impressions + downloads when the report didn't
+    /// provide one directly (downloads ÷ impressions × 100).
+    private func deriveConversionIfPossible() {
+        guard resolved[.anConversion]?.value == nil,
+              let impressions = resolved[.anImpressions]?.value, impressions > 0 else { return }
+        let downloads = (resolved[.anFirstDownloads]?.value ?? 0) + (resolved[.anRedownloads]?.value ?? 0)
+        guard downloads > 0 else { return }
+        resolved[.anConversion] = AnalyticsMetric(
+            label: loc(.anConversion), value: downloads / impressions * 100, delta: nil, unit: "percent")
+    }
+
+    private func outText(_ result: CommandResult) -> String {
+        result.succeeded ? result.output : result.errorMessage
+    }
+
+    private func isForbidden(_ result: CommandResult) -> Bool {
+        let m = result.errorMessage.lowercased()
+        return m.contains("does not allow this request") || m.contains("forbidden")
+    }
+
+    /// Picks a request id from `asc analytics requests` JSON, preferring an ONGOING request.
+    private static func firstRequestId(_ json: String) -> String? {
+        guard let data = json.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let array = object["data"] as? [[String: Any]], !array.isEmpty else { return nil }
+        if let ongoing = array.first(where: {
+            (($0["attributes"] as? [String: Any])?["accessType"] as? String) == "ONGOING"
+        }), let id = ongoing["id"] as? String {
+            return id
+        }
+        return array.first?["id"] as? String
+    }
+
+    /// The credential profile App Analytics calls currently route through (the dedicated
+    /// `.analytics` mapping, or the active profile as a fallback).
+    private var analyticsProfileLabel: String {
+        ascService.profileFor(.analytics) ?? loc(.defaultTag)
+    }
+
+    /// Actionable guidance shown when analytics is blocked by API-key permissions: explains the
+    /// Admin/Account Holder requirement, names the profile in use, and deep-links to Settings.
+    private var permissionBanner: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label(loc(.anAdminRequiredTitle), systemImage: "lock.shield")
+                .font(.callout.weight(.semibold))
+            Text(loc(.anAdminRequiredBody))
+                .font(.caption).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(loc(.anAnalyticsUsingProfileFmt, analyticsProfileLabel))
+                .font(.caption2.monospaced()).foregroundStyle(.tertiary)
+            Button {
+                NotificationCenter.default.post(name: .ascOpenProfileSettings, object: nil)
+            } label: {
+                Label(loc(.anOpenProfileSettings), systemImage: "key")
+            }
+            .controlSize(.small)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.orange.opacity(0.10), in: RoundedRectangle(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.orange.opacity(0.25)))
+    }
+
     private func banner(_ text: String, icon: String, tint: Color) -> some View {
         Label(text, systemImage: icon)
             .font(.caption).foregroundStyle(.secondary)
@@ -289,7 +550,8 @@ struct AnalyticsView: View {
         guard let app = selectedApp else { return }
         isLoading = true
         loadedOnce = true
-        let week = Self.dateFmt.string(from: weekStart)
+        reportForbidden = false
+        let week = Self.dateFmt.string(from: weekMonday)
         var raw = ""
         var collected: [AnalyticsMetric] = []
 

@@ -10,3 +10,12 @@ xcuserdata/
 
 # macOS
 .DS_Store
+
+# Secrets / credentials — never commit App Store Connect keys or configs
+*.p8
+.asc/
+**/.asc/
+config.json
+*.env
+.env
+secrets/
