@@ -9,7 +9,7 @@
 Manage apps, builds, TestFlight, versions, metadata, releases, and reports —
 without memorizing a single command.
 
-[Features](#features) · [Requirements](#requirements) · [Getting started](#getting-started) · [Contributing](#contributing) · [License](#license)
+[Screenshots](#screenshots) · [Features](#features) · [Requirements](#requirements) · [Getting started](#getting-started) · [Contributing](#contributing) · [License](#license)
 
 </div>
 
@@ -22,6 +22,20 @@ productive without touching the terminal.
 
 > **Bring your own credentials.** ASC Manager never stores your API keys. They live in
 > your macOS keychain (managed by `asc`); the app just picks which profile to use.
+
+## Screenshots
+
+**Overview** — dashboard with a global online/offline data mode, the current app, and key counts.
+
+![Overview](docs/screenshot-overview.png)
+
+**Metadata** — compare a version's localizations side by side, and pull / validate / apply canonical files.
+
+![Metadata compare](docs/screenshot-metadata.png)
+
+**Builds** — every build with status, minimum OS, upload date, and expiry.
+
+![Builds](docs/screenshot-builds.png)
 
 ## Features
 
