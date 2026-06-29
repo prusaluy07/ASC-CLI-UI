@@ -5,35 +5,27 @@ import UniformTypeIdentifiers
 // MARK: - Settings panes
 
 enum SettingsPane: String, CaseIterable, Identifiable {
-    case language, profiles, profileRoles, binary, connection, prefetch, remoteSync, onboarding, about
+    case general, profiles, prefetch, remoteSync, about
 
     var id: String { rawValue }
 
     var icon: String {
         switch self {
-        case .language:     return "globe"
-        case .profiles:     return "key"
-        case .profileRoles: return "person.2.badge.gearshape"
-        case .binary:       return "terminal"
-        case .connection:   return "network"
-        case .prefetch:     return "arrow.down.circle"
-        case .remoteSync:   return "icloud"
-        case .onboarding:   return "book"
-        case .about:        return "info.circle"
+        case .general:    return "gearshape"
+        case .profiles:   return "key"
+        case .prefetch:   return "arrow.down.circle"
+        case .remoteSync: return "icloud"
+        case .about:      return "info.circle"
         }
     }
 
     func title(_ loc: LocalizationManager) -> String {
         switch self {
-        case .language:     return loc(.secLanguage)
-        case .profiles:     return loc(.authProfiles)
-        case .profileRoles: return loc(.profileRolesSection)
-        case .binary:       return loc(.ascBinary)
-        case .connection:   return loc(.connection)
-        case .prefetch:     return loc(.secPrefetch)
-        case .remoteSync:   return loc(.secRemoteSync)
-        case .onboarding:   return loc(.onboardingSection)
-        case .about:        return loc(.secAbout)
+        case .general:    return loc(.secGeneral)
+        case .profiles:   return loc(.authProfiles)
+        case .prefetch:   return loc(.secPrefetch)
+        case .remoteSync: return loc(.secRemoteSync)
+        case .about:      return loc(.secAbout)
         }
     }
 }
@@ -53,7 +45,7 @@ struct SettingsView: View {
     @EnvironmentObject var syncEngine: SnapshotEngine
     @Environment(\.dismiss) private var dismiss
 
-    @State private var selection: SettingsPane = .language
+    @State private var selection: SettingsPane = .general
     @State private var showAddKey = false
 
     var body: some View {
@@ -140,15 +132,11 @@ private struct SettingsPaneDetail: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 switch pane {
-                case .language:     SettingsLanguagePane()
-                case .profiles:     SettingsProfilesPane(showAddKey: $showAddKey)
-                case .profileRoles: SettingsProfileRolesPane()
-                case .binary:       SettingsBinaryPane()
-                case .connection:   SettingsConnectionPane()
-                case .prefetch:     SettingsPrefetchPane()
-                case .remoteSync:   SettingsRemoteSyncPane()
-                case .onboarding:   SettingsOnboardingPane()
-                case .about:        SettingsAboutPane()
+                case .general:    SettingsGeneralPane()
+                case .profiles:   SettingsProfilesPane(showAddKey: $showAddKey)
+                case .prefetch:   SettingsPrefetchPane()
+                case .remoteSync: SettingsRemoteSyncPane()
+                case .about:      SettingsAboutPane()
                 }
             }
             .padding(20)
@@ -184,13 +172,41 @@ private struct SettingsPaneHeader: View {
     }
 }
 
-// MARK: - Language
+// MARK: - Subsection chrome
 
-private struct SettingsLanguagePane: View {
-    @EnvironmentObject var loc: LocalizationManager
+private struct SettingsSubsection: View {
+    let title: String
+    let subtitle: String?
+
+    init(_ title: String, subtitle: String? = nil) {
+        self.title = title
+        self.subtitle = subtitle
+    }
 
     var body: some View {
-        SettingsPaneHeader(loc(.secLanguage), subtitle: loc(.languageHelp))
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.headline)
+            if let subtitle {
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
+// MARK: - General (language, asc binary, onboarding)
+
+private struct SettingsGeneralPane: View {
+    @EnvironmentObject var ascService: ASCService
+    @EnvironmentObject var loc: LocalizationManager
+    @Environment(\.dismiss) private var dismiss
+
+    @AppStorage("asc.hasOnboarded") private var hasOnboarded = false
+
+    var body: some View {
+        SettingsSubsection(loc(.secLanguage), subtitle: loc(.languageHelp))
         Picker(loc(.language), selection: $loc.language) {
             ForEach(AppLanguage.allCases) { lang in
                 Text(loc.displayName(for: lang)).tag(lang)
@@ -198,10 +214,54 @@ private struct SettingsLanguagePane: View {
         }
         .pickerStyle(.segmented)
         .labelsHidden()
+
+        Divider().padding(.vertical, 4)
+
+        SettingsSubsection(loc(.ascBinary))
+        HStack {
+            TextField("/opt/homebrew/bin/asc", text: $ascService.ascBinaryPath)
+                .textFieldStyle(.roundedBorder)
+            Button(loc(.browse), action: browseForBinary)
+        }
+        if ascService.binaryExists {
+            Label(loc(.binaryFound), systemImage: "checkmark.circle.fill")
+                .font(.caption)
+                .foregroundStyle(.green)
+        } else {
+            VStack(alignment: .leading, spacing: 4) {
+                Label(loc(.binaryNotFound), systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                Text(loc(.installHintFmt, "brew install asc"))
+                    .font(.system(.caption2, design: .monospaced))
+                    .foregroundStyle(.tertiary)
+            }
+        }
+
+        Divider().padding(.vertical, 4)
+
+        SettingsSubsection(loc(.onboardingSection), subtitle: loc(.replayOnboardingDesc))
+        Button(loc(.showOnboarding)) {
+            hasOnboarded = false
+            dismiss()
+        }
+        .buttonStyle(.bordered)
+    }
+
+    private func browseForBinary() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.directoryURL = URL(fileURLWithPath: "/opt/homebrew/bin")
+        if panel.runModal() == .OK, let url = panel.url {
+            ascService.ascBinaryPath = url.path
+            ascService.saveSettings()
+        }
     }
 }
 
-// MARK: - Profiles
+// MARK: - Profiles (keys, roles, connection test)
 
 private struct SettingsProfilesPane: View {
     @Binding var showAddKey: Bool
@@ -209,8 +269,16 @@ private struct SettingsProfilesPane: View {
     @EnvironmentObject var ascService: ASCService
     @EnvironmentObject var loc: LocalizationManager
 
+    @State private var testResult: ConnectionTestResult?
+    @State private var isTesting = false
+
+    enum ConnectionTestResult {
+        case success(String)
+        case failure(String)
+    }
+
     var body: some View {
-        SettingsPaneHeader(loc(.authProfiles), subtitle: loc(.noKeysDesc))
+        SettingsSubsection(loc(.authProfiles), subtitle: loc(.noKeysDesc))
 
         let credentials = ascService.authStatus?.credentials ?? []
         if credentials.isEmpty {
@@ -235,6 +303,48 @@ private struct SettingsProfilesPane: View {
 
         Button { showAddKey = true } label: {
             Label(loc(.addApiKey), systemImage: "plus")
+        }
+
+        Divider().padding(.vertical, 4)
+
+        SettingsSubsection(loc(.profileRolesSection), subtitle: loc(.profileRolesDesc))
+        if credentials.count < 2 {
+            Text(loc(.profileCapUseDefault))
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        } else {
+            VStack(spacing: 0) {
+                ForEach(ProfileCapability.assignable) { cap in
+                    profileRoleRow(cap, credentials: credentials)
+                    if cap != ProfileCapability.assignable.last { Divider() }
+                }
+            }
+            .background(Color.secondary.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
+        }
+
+        Divider().padding(.vertical, 4)
+
+        SettingsSubsection(loc(.connection))
+        Button { runTest() } label: {
+            if isTesting {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text(loc(.testing))
+                }
+            } else {
+                Label(loc(.testConnection), systemImage: "network")
+            }
+        }
+        .buttonStyle(.borderedProminent)
+        .disabled(isTesting || !ascService.isConfigured)
+
+        switch testResult {
+        case .success(let msg):
+            SettingsResultBanner(text: msg, color: .green, icon: "checkmark.circle.fill")
+        case .failure(let msg):
+            SettingsResultBanner(text: msg, color: .red, icon: "xmark.octagon.fill")
+        case .none:
+            EmptyView()
         }
     }
 
@@ -270,32 +380,6 @@ private struct SettingsProfilesPane: View {
         }
         .buttonStyle(.plain)
     }
-}
-
-// MARK: - Profile roles
-
-private struct SettingsProfileRolesPane: View {
-    @EnvironmentObject var ascService: ASCService
-    @EnvironmentObject var loc: LocalizationManager
-
-    var body: some View {
-        SettingsPaneHeader(loc(.profileRolesSection), subtitle: loc(.profileRolesDesc))
-
-        let credentials = ascService.authStatus?.credentials ?? []
-        if credentials.count < 2 {
-            Text(loc(.profileCapUseDefault))
-                .font(.callout)
-                .foregroundStyle(.secondary)
-        } else {
-            VStack(spacing: 0) {
-                ForEach(ProfileCapability.assignable) { cap in
-                    profileRoleRow(cap, credentials: credentials)
-                    if cap != ProfileCapability.assignable.last { Divider() }
-                }
-            }
-            .background(Color.secondary.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
-        }
-    }
 
     private func profileRoleRow(_ capability: ProfileCapability, credentials: [ASCAuthCredential]) -> some View {
         let selected = ascService.profileMappings[capability]
@@ -323,91 +407,6 @@ private struct SettingsProfileRolesPane: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
-    }
-}
-
-// MARK: - Binary
-
-private struct SettingsBinaryPane: View {
-    @EnvironmentObject var ascService: ASCService
-    @EnvironmentObject var loc: LocalizationManager
-
-    var body: some View {
-        SettingsPaneHeader(loc(.ascBinary))
-
-        HStack {
-            TextField("/opt/homebrew/bin/asc", text: $ascService.ascBinaryPath)
-                .textFieldStyle(.roundedBorder)
-            Button(loc(.browse), action: browseForBinary)
-        }
-
-        if ascService.binaryExists {
-            Label(loc(.binaryFound), systemImage: "checkmark.circle.fill")
-                .font(.caption)
-                .foregroundStyle(.green)
-        } else {
-            VStack(alignment: .leading, spacing: 4) {
-                Label(loc(.binaryNotFound), systemImage: "exclamationmark.triangle.fill")
-                    .font(.caption)
-                    .foregroundStyle(.orange)
-                Text(loc(.installHintFmt, "brew install asc"))
-                    .font(.system(.caption2, design: .monospaced))
-                    .foregroundStyle(.tertiary)
-            }
-        }
-    }
-
-    private func browseForBinary() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = true
-        panel.canChooseDirectories = false
-        panel.allowsMultipleSelection = false
-        panel.directoryURL = URL(fileURLWithPath: "/opt/homebrew/bin")
-        if panel.runModal() == .OK, let url = panel.url {
-            ascService.ascBinaryPath = url.path
-            ascService.saveSettings()
-        }
-    }
-}
-
-// MARK: - Connection
-
-private struct SettingsConnectionPane: View {
-    @EnvironmentObject var ascService: ASCService
-    @EnvironmentObject var loc: LocalizationManager
-
-    @State private var testResult: TestResult?
-    @State private var isTesting = false
-
-    enum TestResult {
-        case success(String)
-        case failure(String)
-    }
-
-    var body: some View {
-        SettingsPaneHeader(loc(.connection))
-
-        Button { runTest() } label: {
-            if isTesting {
-                HStack(spacing: 8) {
-                    ProgressView().controlSize(.small)
-                    Text(loc(.testing))
-                }
-            } else {
-                Label(loc(.testConnection), systemImage: "network")
-            }
-        }
-        .buttonStyle(.borderedProminent)
-        .disabled(isTesting || !ascService.isConfigured)
-
-        switch testResult {
-        case .success(let msg):
-            SettingsResultBanner(text: msg, color: .green, icon: "checkmark.circle.fill")
-        case .failure(let msg):
-            SettingsResultBanner(text: msg, color: .red, icon: "xmark.octagon.fill")
-        case .none:
-            EmptyView()
-        }
     }
 
     private func runTest() {

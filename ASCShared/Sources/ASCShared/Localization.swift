@@ -63,7 +63,7 @@ public enum LocKey: String {
     case terminalTitle, clear, terminalHint, terminalPlaceholder
 
     // Settings
-    case settingsTitle, secLanguage, language, languageHelp
+    case settingsTitle, secGeneral, secLanguage, language, languageHelp
     case authProfiles, noKeysFound, noKeysDesc, addApiKey, storedInFmt, defaultTag
     case profileRolesSection, profileRolesDesc
     case profileCapGeneral, profileCapAnalytics, profileCapFinance, profileCapAdmin
@@ -432,6 +432,7 @@ enum Strings {
 
         // Settings
         .settingsTitle:  ["en": "Settings",  "de": "Einstellungen"],
+        .secGeneral:     ["en": "General",    "de": "Allgemein"],
         .secLanguage:    ["en": "Language",  "de": "Sprache"],
         .language:       ["en": "Language",  "de": "Sprache"],
         .languageHelp:   ["en": "Choose the interface language.",
