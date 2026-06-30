@@ -284,6 +284,9 @@ public enum LocKey: String {
     // iOS remote consumer (Phase 3b mirror reader)
     case rmAppsTitle, rmEmptyTitle, rmEmptyMessage, rmLoadError, rmUpdatedFmt
     case rmAppFmt, rmSectionsTitle, rmOfflineBadge, rmSignInTitle, rmSignInMessage
+    // Remote settings
+    case rmDataSection, rmMirroredCountFmt, rmLastSync, rmNever
+    case rmCompatMacApp, rmSourceCode, rmImpressum, rmImpressumBody, rmAppInfoNote
 }
 
 // MARK: - Manager
@@ -1226,5 +1229,16 @@ enum Strings {
         .rmSignInTitle:  ["en": "Sign in to iCloud", "de": "Bei iCloud anmelden"],
         .rmSignInMessage:["en": "Sign in to iCloud in Settings to read your mirrored App Store Connect data.",
                           "de": "Melde dich in den Einstellungen bei iCloud an, um deine gespiegelten App-Store-Connect-Daten zu lesen."],
+        .rmDataSection:  ["en": "Data", "de": "Daten"],
+        .rmMirroredCountFmt: ["en": "%d mirrored apps", "de": "%d gespiegelte Apps"],
+        .rmLastSync:     ["en": "Last update", "de": "Letzte Aktualisierung"],
+        .rmNever:        ["en": "Never", "de": "Nie"],
+        .rmCompatMacApp: ["en": "Compatible Mac app", "de": "Kompatible Mac-App"],
+        .rmSourceCode:   ["en": "Source code", "de": "Quellcode"],
+        .rmImpressum:    ["en": "Legal notice", "de": "Impressum"],
+        .rmImpressumBody:["en": "ASC Remote is a private, non-commercial companion to ASC Manager. It is not affiliated with or endorsed by Apple. It only reads data you mirror from your own Mac via your private iCloud database and never accesses App Store Connect directly.",
+                          "de": "ASC Remote ist eine private, nicht-kommerzielle Begleit-App zu ASC Manager. Sie steht in keiner Verbindung zu Apple und wird nicht von Apple unterstützt. Sie liest ausschließlich Daten, die du von deinem eigenen Mac über deine private iCloud-Datenbank spiegelst, und greift nie direkt auf App Store Connect zu."],
+        .rmAppInfoNote:  ["en": "Read-only mirror. No App Store Connect credentials are stored on this device.",
+                          "de": "Schreibgeschützte Spiegelung. Auf diesem Gerät werden keine App-Store-Connect-Zugangsdaten gespeichert."],
     ]
 }

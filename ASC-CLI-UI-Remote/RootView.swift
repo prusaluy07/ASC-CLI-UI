@@ -13,12 +13,20 @@ struct SectionRoute: Hashable {
 struct RootView: View {
     @EnvironmentObject private var loc: LocalizationManager
     @EnvironmentObject private var reader: CloudKitMirrorReader
+    @State private var showSettings = false
 
     var body: some View {
         NavigationStack {
             content
                 .navigationTitle(loc(.rmAppsTitle))
                 .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button {
+                            showSettings = true
+                        } label: {
+                            Image(systemName: "gearshape")
+                        }
+                    }
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {
                             Task { await reader.refresh() }
@@ -27,6 +35,11 @@ struct RootView: View {
                         }
                         .disabled(reader.isRefreshing)
                     }
+                }
+                .sheet(isPresented: $showSettings) {
+                    RemoteSettingsView()
+                        .environmentObject(loc)
+                        .environmentObject(reader)
                 }
                 .navigationDestination(for: String.self) { appId in
                     AppSectionsView(appId: appId)

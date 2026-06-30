@@ -369,8 +369,8 @@ enum RemoteSyncSettings {
 enum AppInfo {
     static var version: String { Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0" }
     static var build: String { Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1" }
-    static let creator = "Andre Ludwig"
-    static let license = "MIT License"
+    static let creator = ASCAppInfo.creator
+    static let license = ASCAppInfo.license
     static let appStoreConnectApps = URL(string: "https://appstoreconnect.apple.com/apps")!
     static let developerIdentifiers = URL(string: "https://developer.apple.com/account/resources/identifiers/list")!
 }
