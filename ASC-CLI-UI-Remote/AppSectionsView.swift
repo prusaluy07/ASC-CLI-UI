@@ -24,7 +24,7 @@ struct AppSectionsView: View {
                 ContentUnavailableView(loc(.rmEmptyTitle), systemImage: "icloud.slash")
             }
         }
-        .navigationTitle(loc(.rmAppFmt, appId))
+        .navigationTitle(group?.appName ?? loc(.rmAppFmt, appId))
         .navigationBarTitleDisplayMode(.inline)
         .refreshable { await reader.refresh() }
     }
@@ -49,7 +49,9 @@ struct AppSectionsView: View {
 
     /// A compact one-line headline from the snapshot's pre-computed summary, if any.
     private func summaryLine(_ snapshot: Snapshot) -> String? {
-        guard let summary = snapshot.summary, !summary.isEmpty else { return nil }
+        // `appName` is metadata for the title, not a section headline — drop it here.
+        let summary = (snapshot.summary ?? [:]).filter { $0.key != "appName" }
+        guard !summary.isEmpty else { return nil }
         let priority = ["health", "latestVersion", "latestBuild", "averageRating", "count"]
         if let key = priority.first(where: { summary[$0] != nil }), let value = summary[key] {
             return value

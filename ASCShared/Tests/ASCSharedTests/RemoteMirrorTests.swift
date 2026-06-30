@@ -115,6 +115,22 @@ final class RemoteMirrorTests: XCTestCase {
         XCTAssertEqual(RemoteMirror.summarize(section: .inAppPurchases, payloadJSON: json)["count"], "2")
     }
 
+    func testGroupExposesAppNameFromSummary() {
+        let withName = Snapshot(appId: "123", section: MirrorSection.versions.rawValue,
+                                payloadJSON: "{}", summary: ["count": "1", "appName": "Voicement"])
+        let withoutName = Snapshot(appId: "123", section: MirrorSection.builds.rawValue,
+                                   payloadJSON: "{}", summary: ["count": "3"])
+        let groups = RemoteMirror.group([withoutName, withName])
+        XCTAssertEqual(groups.count, 1)
+        XCTAssertEqual(groups.first?.appName, "Voicement")
+    }
+
+    func testGroupAppNameNilWhenNotMirrored() {
+        let snap = Snapshot(appId: "999", section: MirrorSection.builds.rawValue,
+                            payloadJSON: "{}", summary: ["count": "3"])
+        XCTAssertNil(RemoteMirror.group([snap]).first?.appName)
+    }
+
     func testAnalyticsSummaryExtractsWeekAndMetricAvailability() {
         let json = """
         {

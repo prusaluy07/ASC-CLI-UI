@@ -71,6 +71,14 @@ public struct MirrorAppGroup: Identifiable, Hashable, Sendable {
     public var lastUpdated: Date? {
         snapshots.values.map(\.capturedAt).max()
     }
+
+    /// The app's display name, if the producer mirrored it into any section summary.
+    /// Falls back to `nil` for older snapshots captured before names were mirrored.
+    public var appName: String? {
+        orderedSnapshots.lazy
+            .compactMap { $0.summary?["appName"] }
+            .first { !$0.isEmpty }
+    }
 }
 
 // MARK: - Pure consumer helpers

@@ -88,6 +88,10 @@ app's data to your private CloudKit database, and the iPhone app shows it on the
 Overview, Builds, TestFlight, Analytics, and In-App Purchases — read-only. Its icon
 reuses the exact same symbol and style as ASC Manager, with added wireless "signal" arcs.
 
+<div align="center">
+<img src="docs/screenshot-remote.png" width="280" alt="ASC Remote – mirrored app sections" />
+</div>
+
 ## Requirements
 
 - macOS 15.6 or later, Xcode 26 or later (to build).

@@ -88,8 +88,13 @@ struct RootView: View {
 
     private func appRow(_ group: MirrorAppGroup) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(loc(.rmAppFmt, group.appId))
+            Text(group.appName ?? loc(.rmAppFmt, group.appId))
                 .font(.headline)
+            if group.appName != nil {
+                Text(loc(.rmAppFmt, group.appId))
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
             HStack(spacing: 8) {
                 Text(loc(.outCountFmt, group.snapshots.count))
                 if let updated = group.lastUpdated {

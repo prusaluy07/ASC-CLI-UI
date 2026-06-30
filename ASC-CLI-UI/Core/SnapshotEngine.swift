@@ -89,6 +89,9 @@ final class SnapshotEngine: ObservableObject {
         isSyncing = true
         defer { isSyncing = false }
 
+        // Resolve the app's display name so the companion can show it instead of the raw id.
+        let appName = service.apps.first(where: { $0.id == appId })?.name
+
         var snapshots: [Snapshot] = []
         // Run sequentially (in a stable order) so we never spawn many CLI processes at once.
         for section in MirrorSection.allCases where sections.contains(section) {
@@ -96,7 +99,8 @@ final class SnapshotEngine: ObservableObject {
             guard result.succeeded else { continue }
             let payload = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !payload.isEmpty else { continue }
-            let summary = RemoteMirror.summarize(section: section, payloadJSON: payload)
+            var summary = RemoteMirror.summarize(section: section, payloadJSON: payload)
+            if let appName, !appName.isEmpty { summary["appName"] = appName }
             snapshots.append(Snapshot(
                 appId: appId,
                 section: section.rawValue,
