@@ -77,6 +77,17 @@ Plus a **first-run onboarding** flow and **live English / German** language swit
 > Every mutating action (release, metadata save, tester notifications) asks for
 > confirmation first.
 
+## Companion app
+
+<div align="center">
+<img src="docs/icon-remote.png" width="96" alt="ASC Remote icon" />
+</div>
+
+**ASC Remote** is an optional iPhone companion. Your always-on Mac mirrors the selected
+app's data to your private CloudKit database, and the iPhone app shows it on the go —
+Overview, Builds, TestFlight, Analytics, and In-App Purchases — read-only. Its icon
+reuses the exact same symbol and style as ASC Manager, with added wireless "signal" arcs.
+
 ## Requirements
 
 - macOS 15.6 or later, Xcode 26 or later (to build).
