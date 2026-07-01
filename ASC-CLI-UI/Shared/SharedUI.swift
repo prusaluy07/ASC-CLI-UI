@@ -3,25 +3,16 @@ import AppKit
 import UniformTypeIdentifiers
 import ASCShared
 
-/// Scrollable monospaced output panel used by the action-oriented feature screens.
+/// Output panel used by action-oriented feature screens — renders JSON as formatted cards.
 struct OutputPanel: View {
+    @EnvironmentObject var loc: LocalizationManager
     let title: String
     let text: String
     var maxHeight: CGFloat = 320
 
     var body: some View {
-        GroupBox {
-            ScrollView {
-                Text(text.isEmpty ? "—" : text)
-                    .font(.system(.caption, design: .monospaced))
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .frame(maxHeight: maxHeight)
-            .padding(6)
-        } label: {
-            Label(title, systemImage: "doc.plaintext")
-        }
+        OutputView(text: text, maxHeight: maxHeight)
+            .environmentObject(loc)
     }
 }
 

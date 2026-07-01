@@ -2,13 +2,14 @@ import SwiftUI
 import ASCShared
 
 enum SidebarSection: String, CaseIterable, Identifiable {
-    case app, monetization, build, release, ads, developer
+    case app, market, monetization, build, release, ads, developer
 
     var id: String { rawValue }
 
     var locKey: LocKey {
         switch self {
         case .app:          return .grpApp
+        case .market:       return .grpMarket
         case .monetization: return .grpMonetization
         case .build:        return .grpBuild
         case .release:      return .grpRelease
@@ -20,9 +21,10 @@ enum SidebarSection: String, CaseIterable, Identifiable {
     var items: [SidebarItem] {
         switch self {
         case .app:          return [.overview, .analytics, .apps, .versions, .metadata, .media, .pricing, .reviews, .marketing]
+        case .market:       return [.marketCharts, .marketSearch, .marketSDKs]
         case .monetization: return [.subscriptions, .iap, .appEvents]
         case .build:        return [.builds, .testflight, .xcodeCloud]
-        case .release:      return [.release, .submission, .compliance, .reports, .workflows]
+        case .release:      return [.release, .submission, .compliance, .reports, .payments, .workflows]
         case .ads:          return [.ads]
         case .developer:    return [.signing, .distribution, .team, .tools, .discover, .terminal, .help]
         }
@@ -31,9 +33,10 @@ enum SidebarSection: String, CaseIterable, Identifiable {
 
 enum SidebarItem: String, CaseIterable, Identifiable {
     case overview, analytics, apps, versions, metadata, media, pricing, reviews, marketing
+    case marketCharts, marketSearch, marketSDKs
     case subscriptions, iap, appEvents
     case builds, testflight, xcodeCloud
-    case release, submission, compliance, reports, workflows
+    case release, submission, compliance, reports, payments, workflows
     case ads, distribution
     case signing, team, tools, discover, terminal, help
 
@@ -50,6 +53,9 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .pricing:    return .secPricing
         case .reviews:    return .secReviews
         case .marketing:  return .secMarketing
+        case .marketCharts: return .secMarketCharts
+        case .marketSearch: return .secMarketSearch
+        case .marketSDKs:   return .secMarketSDKs
         case .subscriptions: return .secSubscriptions
         case .iap:        return .secIAP
         case .appEvents:  return .secAppEvents
@@ -60,6 +66,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .submission: return .secSubmission
         case .compliance: return .secCompliance
         case .reports:    return .secReports
+        case .payments:   return .secPayments
         case .workflows:  return .secWorkflows
         case .ads:        return .secAds
         case .distribution: return .secDistribution
@@ -83,6 +90,9 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .pricing:    return "dollarsign.circle"
         case .reviews:    return "star.bubble"
         case .marketing:  return "megaphone.fill"
+        case .marketCharts: return "chart.bar.fill"
+        case .marketSearch: return "magnifyingglass.circle"
+        case .marketSDKs:   return "puzzlepiece.extension"
         case .subscriptions: return "repeat.circle"
         case .iap:        return "cart"
         case .appEvents:  return "calendar"
@@ -93,6 +103,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .submission: return "paperplane"
         case .compliance: return "checklist"
         case .reports:    return "chart.bar"
+        case .payments:   return "banknote"
         case .workflows:  return "arrow.triangle.branch"
         case .ads:        return "megaphone"
         case .distribution: return "globe"
@@ -109,7 +120,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     var requiresApp: Bool {
         switch self {
         case .analytics, .versions, .metadata, .media, .builds, .testflight, .xcodeCloud, .release,
-             .pricing, .reviews, .subscriptions, .iap, .appEvents, .submission, .compliance: return true
+             .pricing, .reviews, .payments, .subscriptions, .iap, .appEvents, .submission, .compliance: return true
         default: return false
         }
     }
@@ -120,6 +131,8 @@ struct ContentView: View {
     @EnvironmentObject var loc: LocalizationManager
     @EnvironmentObject var cloudSync: CloudKitSync
     @EnvironmentObject var syncEngine: SnapshotEngine
+    @EnvironmentObject var metricsEngine: MetricsEngine
+    @EnvironmentObject var marketEngine: MarketEngine
     @AppStorage("asc.hasOnboarded") private var hasOnboarded = false
     @AppStorage(PrefetchSettings.enabledKey) private var prefetchEnabled = false
     @AppStorage(PrefetchSettings.sectionsKey) private var prefetchSectionsRaw = PrefetchSettings.defaultRaw
@@ -174,6 +187,8 @@ struct ContentView: View {
                 .environmentObject(loc)
                 .environmentObject(cloudSync)
                 .environmentObject(syncEngine)
+                .environmentObject(metricsEngine)
+                .environmentObject(marketEngine)
         }
         .onReceive(NotificationCenter.default.publisher(for: .ascOpenProfileSettings)) { _ in
             settingsInitialPane = .profiles
@@ -330,6 +345,12 @@ struct ContentView: View {
                 ReviewsView(selectedApp: selectedApp)
             case .marketing:
                 MarketingView(selectedApp: selectedApp)
+            case .marketCharts:
+                MarketChartsView()
+            case .marketSearch:
+                MarketSearchView()
+            case .marketSDKs:
+                MarketSDKsView()
             case .subscriptions:
                 SubscriptionsView(selectedApp: selectedApp)
             case .iap:
@@ -350,6 +371,8 @@ struct ContentView: View {
                 ComplianceView(selectedApp: selectedApp)
             case .reports:
                 ReportsView(selectedApp: selectedApp)
+            case .payments:
+                PaymentsView(selectedApp: selectedApp)
             case .workflows:
                 WorkflowsView()
             case .ads:

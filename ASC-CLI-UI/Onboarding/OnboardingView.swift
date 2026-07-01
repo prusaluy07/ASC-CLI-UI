@@ -12,7 +12,7 @@ struct OnboardingView: View {
     @State private var showAddKey = false
     @State private var recheckToken = 0
 
-    private let totalSteps = 4
+    private let totalSteps = 5
 
     var body: some View {
         VStack(spacing: 0) {
@@ -24,6 +24,7 @@ struct OnboardingView: View {
                 case 0: welcomeStep
                 case 1: installStep
                 case 2: connectStep
+                case 3: reportsStep
                 default: finishStep
                 }
             }
@@ -238,6 +239,22 @@ struct OnboardingView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+
+    private var reportsStep: some View {
+        stepScaffold(icon: "chart.bar.doc.horizontal", title: loc(.obReportsTitle), body: loc(.obReportsBody)) {
+            VStack(alignment: .leading, spacing: 14) {
+                Label(loc(.obReportsVendorHint), systemImage: "number")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                Label(loc(.obReportsFolderHint), systemImage: "folder")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                Text(loc(.anNeedVendorSales))
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+        }
     }
 
     private var finishStep: some View {

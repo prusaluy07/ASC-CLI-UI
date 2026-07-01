@@ -54,9 +54,7 @@ public struct ParsedOutput {
               let (arr, collection) = collection(from: root) else { return nil }
         let records = arr.compactMap { record(from: $0) }
         guard !records.isEmpty else { return nil }
-        let hasMoney = records.contains { $0.fields.contains { $0.isMoney } }
-        let prefer = collection != nil || records.count > 1 || hasMoney
-        return ParsedOutput(records: records, collection: collection, preferPretty: prefer)
+        return ParsedOutput(records: records, collection: collection, preferPretty: true)
     }
 
     private static func isObject(_ v: JSONValue) -> Bool { if case .object = v { return true }; return false }
@@ -184,7 +182,7 @@ public struct OutputView: View {
     // sibling text field) don't re-parse potentially large JSON on every keystroke.
     @State private var parsed: ParsedOutput?
     @State private var parsedText: String?
-    @State private var mode: Int = 1   // 0 = formatted, 1 = raw
+    @State private var mode: Int = 0   // 0 = formatted, 1 = raw
 
     public init(text: String, maxHeight: CGFloat = 420) {
         self.text = text
@@ -233,7 +231,7 @@ public struct OutputView: View {
             let result = ParsedOutput.parse(text)
             parsed = result
             parsedText = text
-            mode = (result?.preferPretty ?? false) ? 0 : 1
+            if result != nil { mode = 0 }
         }
     }
 

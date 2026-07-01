@@ -26,6 +26,8 @@ final class SnapshotEngine: ObservableObject {
 
     private let service: ASCService
     private let uploader: CloudKitSync
+    private let metricsEngine: MetricsEngine?
+    private let marketEngine: MarketEngine?
     private var sections: Set<MirrorSection> = MirrorSection.defaultSelection
     private var timerTask: Task<Void, Never>?
 
@@ -33,9 +35,14 @@ final class SnapshotEngine: ObservableObject {
     /// the CLI (e.g. repeated app foregrounding).
     private let minimumAutomaticInterval: TimeInterval = 60
 
-    init(service: ASCService, uploader: CloudKitSync) {
+    init(service: ASCService,
+         uploader: CloudKitSync,
+         metricsEngine: MetricsEngine? = nil,
+         marketEngine: MarketEngine? = nil) {
         self.service = service
         self.uploader = uploader
+        self.metricsEngine = metricsEngine
+        self.marketEngine = marketEngine
     }
 
     // MARK: - Configuration
@@ -95,6 +102,10 @@ final class SnapshotEngine: ObservableObject {
         var snapshots: [Snapshot] = []
         // Run sequentially (in a stable order) so we never spawn many CLI processes at once.
         for section in MirrorSection.allCases where sections.contains(section) {
+            if let custom = customSnapshot(section: section, appId: appId, appName: appName) {
+                snapshots.append(custom)
+                continue
+            }
             let result = await service.run(arguments(for: section, appId: appId))
             guard result.succeeded else { continue }
             let payload = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -124,6 +135,31 @@ final class SnapshotEngine: ObservableObject {
         }
     }
 
+    /// Locally sourced sections that don't call the `asc` CLI.
+    private func customSnapshot(section: MirrorSection, appId: String, appName: String?) -> Snapshot? {
+        switch section {
+        case .storedMetrics:
+            guard let metricsEngine,
+                  let app = service.apps.first(where: { $0.id == appId }),
+                  metricsEngine.hasData(for: app) else { return nil }
+            let payload = metricsEngine.mirrorPayloadJSON(for: app)
+            guard !payload.isEmpty, payload != "{}" else { return nil }
+            var summary = RemoteMirror.summarize(section: section, payloadJSON: payload)
+            if let appName, !appName.isEmpty { summary["appName"] = appName }
+            return Snapshot(appId: appId, section: section.rawValue, payloadJSON: payload,
+                            summary: summary.isEmpty ? nil : summary)
+        case .marketRank:
+            guard let marketEngine,
+                  let payload = marketEngine.mirrorRankJSON(forAppleId: appId) else { return nil }
+            var summary = RemoteMirror.summarize(section: section, payloadJSON: payload)
+            if let appName, !appName.isEmpty { summary["appName"] = appName }
+            return Snapshot(appId: appId, section: section.rawValue, payloadJSON: payload,
+                            summary: summary.isEmpty ? nil : summary)
+        default:
+            return nil
+        }
+    }
+
     /// Read-only `asc` arguments backing each mirror section. Mirrors the argument lists
     /// used by ``ASCService``'s loaders but goes through `run` directly so the app's
     /// `@Published` caches are never disturbed by a background sync.
@@ -149,6 +185,8 @@ final class SnapshotEngine: ObservableObject {
         case .analytics:
             return ["insights", "weekly", "--app", appId,
                     "--source", "analytics", "--week", Self.lastCompleteWeekStart()]
+        case .storedMetrics, .marketRank:
+            return []
         }
     }
 

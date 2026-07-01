@@ -1,5 +1,7 @@
 import SwiftUI
 import Charts
+import AppKit
+import UniformTypeIdentifiers
 import ASCShared
 
 // MARK: - Number formatting
@@ -113,6 +115,7 @@ private struct MetricBarChart: View {
 struct AnalyticsView: View {
     @EnvironmentObject var ascService: ASCService
     @EnvironmentObject var loc: LocalizationManager
+    @EnvironmentObject var metricsEngine: MetricsEngine
     let selectedApp: ASCApp?
 
     @AppStorage(AppModeSettings.key) private var appMode = AppMode.online
@@ -133,8 +136,21 @@ struct AnalyticsView: View {
     /// Holder role, so we can surface the "assign an Admin profile" guidance.
     @State private var reportForbidden = false
 
+    // Locally stored sales-report metrics (primary when available).
+    @State private var storedWeek: [LocKey: AnalyticsMetric] = [:]
+    @State private var stored30: [LocKey: AnalyticsMetric] = [:]
+    @State private var storedTrend: [MetricsTrendPoint] = []
+    @State private var trendSeries: StoredTrendSeries = .downloads
+
     private static let dateFmt: DateFormatter = {
         let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; f.locale = Locale(identifier: "en_US_POSIX"); return f
+    }()
+
+    private static let fiscalDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        f.timeStyle = .none
+        return f
     }()
 
     var body: some View {
@@ -160,6 +176,9 @@ struct AnalyticsView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
                         controls
+                        if let app = selectedApp, metricsEngine.hasData(for: app) {
+                            storedMetricsSection(for: app)
+                        }
                         if analyticsRestricted || reportForbidden {
                             permissionBanner
                         }
@@ -184,7 +203,7 @@ struct AnalyticsView: View {
                         group(loc(.anSubscriptions), period: loc(.anWeekVsPrev), groupIndex: 2)
                         group(loc(.anUsage), period: loc(.anWeekVsPrev), groupIndex: 3)
 
-                        if !revenue30.isEmpty { revenue30Section }
+                        if showRevenue30Section { revenue30Section }
 
                         reportSection
 
@@ -205,8 +224,133 @@ struct AnalyticsView: View {
             }
         }
         .task(id: selectedApp?.id) {
+            refreshStoredMetrics()
             if selectedApp != nil && !loadedOnce && appMode == .online { await load() }
+            if !ascService.reportsDirectory.isEmpty {
+                _ = metricsEngine.scanDirectory(ascService.reportsDirectory, apps: ascService.apps)
+                refreshStoredMetrics()
+            }
         }
+        .onChange(of: metricsEngine.recordCount) { _, _ in refreshStoredMetrics() }
+    }
+
+    private enum StoredTrendSeries: String, CaseIterable, Identifiable {
+        case downloads, proceeds, iap, updates, returns
+        var id: String { rawValue }
+    }
+
+    private func refreshStoredMetrics() {
+        guard let app = selectedApp, metricsEngine.hasData(for: app) else {
+            storedWeek = [:]
+            stored30 = [:]
+            storedTrend = []
+            return
+        }
+        storedWeek = metricsEngine.weekMetrics(for: app)
+        stored30 = metricsEngine.monthMetrics(for: app)
+        storedTrend = metricsEngine.trend(for: app, days: 30)
+    }
+
+    private func displayMetric(_ key: LocKey) -> AnalyticsMetric? {
+        if let app = selectedApp, metricsEngine.hasData(for: app), let stored = storedWeek[key], stored.isAvailable {
+            return stored
+        }
+        return resolved[key]
+    }
+
+    private func display30Metric(_ key: LocKey) -> AnalyticsMetric? {
+        if let app = selectedApp, metricsEngine.hasData(for: app), let stored = stored30[key], stored.isAvailable {
+            return stored
+        }
+        return revenue30[key]
+    }
+
+    private var usesStoredPrimary: Bool {
+        guard let app = selectedApp else { return false }
+        return metricsEngine.hasData(for: app)
+    }
+
+    private func storedMetricsSection(for app: ASCApp) -> some View {
+        let subs = metricsEngine.subscriptionSummary(for: app, days: 30)
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(loc(.msTitle)).font(.title3).fontWeight(.semibold)
+                Text(loc(.msFromReports)).font(.caption).foregroundStyle(.tertiary)
+                Spacer()
+                Button { exportMetrics(app, format: .csv) } label: {
+                    Label(loc(.exportCSV), systemImage: "square.and.arrow.up")
+                }
+                Button { exportMetrics(app, format: .json) } label: {
+                    Label(loc(.exportJSON), systemImage: "curlybraces")
+                }
+            }
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 168), spacing: 12)], spacing: 12) {
+                if let m = storedWeek[.anFirstDownloads] {
+                    MetricCard(title: loc(.msDownloads7d), metric: m, isPercent: false)
+                }
+                if let m = storedWeek[.anProceeds] {
+                    MetricCard(title: loc(.msProceeds7d), metric: m, isPercent: false)
+                }
+                if let m = storedWeek[.anReturns] {
+                    MetricCard(title: loc(.anReturns), metric: m, isPercent: false)
+                }
+                MetricCard(title: loc(.msSubscriptions30d),
+                           metric: AnalyticsMetric(label: "", value: Double(subs.subscriptionUnits), delta: nil),
+                           isPercent: false)
+                if let payment = AppleFiscalCalendar.nextPayment() {
+                    let dateText = Self.fiscalDateFormatter.string(from: payment.paymentDate)
+                    MetricCard(title: loc(.msNextPayout),
+                               metric: AnalyticsMetric(label: "", value: nil, delta: nil, reason: dateText),
+                               isPercent: false)
+                }
+            }
+            if !storedTrend.isEmpty {
+                GroupBox {
+                    Picker("", selection: $trendSeries) {
+                        Text(loc(.anFirstDownloads)).tag(StoredTrendSeries.downloads)
+                        Text(loc(.anProceeds)).tag(StoredTrendSeries.proceeds)
+                        Text(loc(.anIap)).tag(StoredTrendSeries.iap)
+                        Text(loc(.anUpdates)).tag(StoredTrendSeries.updates)
+                        Text(loc(.anReturns)).tag(StoredTrendSeries.returns)
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    Chart(storedTrend) { point in
+                        LineMark(
+                            x: .value("Date", point.date),
+                            y: .value("Value", trendValue(point))
+                        )
+                        .foregroundStyle(.blue)
+                    }
+                    .chartXAxis(.hidden)
+                    .frame(height: 160)
+                    .padding(6)
+                } label: {
+                    Label(loc(.msTrendTitle), systemImage: "chart.line.uptrend.xyaxis")
+                }
+            }
+        }
+    }
+
+    private func trendValue(_ point: MetricsTrendPoint) -> Double {
+        switch trendSeries {
+        case .downloads: return Double(point.downloads)
+        case .proceeds: return point.proceeds
+        case .iap: return Double(point.iapUnits)
+        case .updates: return Double(point.updates)
+        case .returns: return Double(point.returns)
+        }
+    }
+
+    private enum ExportFormat { case csv, json }
+
+    private func exportMetrics(_ app: ASCApp, format: ExportFormat) {
+        let text = format == .csv ? metricsEngine.exportCSV(for: app) : metricsEngine.exportJSON(for: app)
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = format == .csv ? [.commaSeparatedText] : [.json]
+        panel.nameFieldStringValue = "\(app.name)-metrics.\(format == .csv ? "csv" : "json")"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        try? text.write(to: url, atomically: true, encoding: .utf8)
     }
 
     private var subtitleText: String? {
@@ -242,7 +386,7 @@ struct AnalyticsView: View {
             }
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 168), spacing: 12)], spacing: 12) {
                 ForEach(AnalyticsCatalog.specs.filter { $0.group == groupIndex }, id: \.key) { spec in
-                    MetricCard(title: loc(spec.key), metric: resolved[spec.key], isPercent: spec.isPercent)
+                    MetricCard(title: loc(spec.key), metric: displayMetric(spec.key), isPercent: spec.isPercent)
                 }
             }
         }
@@ -252,12 +396,13 @@ struct AnalyticsView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline) {
                 Text(loc(.an30dRevenue)).font(.title3).fontWeight(.semibold)
-                Text(loc(.an30dVsPrev)).font(.caption).foregroundStyle(.tertiary)
+                Text(usesStoredPrimary ? loc(.msFromReports) : loc(.an30dVsPrev))
+                    .font(.caption).foregroundStyle(.tertiary)
                 Spacer()
             }
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 168), spacing: 12)], spacing: 12) {
                 ForEach(AnalyticsCatalog.specs.filter { $0.group == 1 || $0.group == 2 }, id: \.key) { spec in
-                    if let m = revenue30[spec.key] {
+                    if let m = display30Metric(spec.key) {
                         MetricCard(title: loc(spec.key), metric: m, isPercent: spec.isPercent)
                     }
                 }
@@ -265,9 +410,13 @@ struct AnalyticsView: View {
         }
     }
 
+    private var showRevenue30Section: Bool {
+        usesStoredPrimary || !revenue30.isEmpty
+    }
+
     private func chartData(for keys: [LocKey]) -> [ChartDatum] {
         keys.compactMap { key in
-            guard let m = resolved[key], let v = m.value else { return nil }
+            guard let m = displayMetric(key), let v = m.value else { return nil }
             return ChartDatum(label: loc(key), value: v)
         }
     }
