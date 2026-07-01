@@ -261,6 +261,12 @@ public enum LocKey: String {
     case anReportProcessing, anReportForbidden, anReportCreated, anReportLoadedFmt
     case anAdminRequiredTitle, anAdminRequiredBody, anAnalyticsUsingProfileFmt, anOpenProfileSettings
 
+    // Local metrics store (Milestone 1)
+    case msTitle, msBody, msScanFolder, msImportCountFmt, msNoData
+    case msDownloads7d, msProceeds7d, msSubscriptions30d, msNextPayout
+    case msTrendTitle, msFromReports, msPortfolioTitle
+    case ovMetricsTitle, ovFiscalTitle, ovFiscalPeriodFmt, ovFiscalPaymentFmt
+
     // Prefetch / overview app picker
     case ovChooseApp, secPrefetch, prefetchEnable, prefetchEnableDesc, prefetchSectionsLabel, prefetchNote
 
@@ -670,8 +676,10 @@ enum Strings {
         .rpFolder:        ["en": "Save Folder", "de": "Speicherordner"],
         .rpChooseFolder:  ["en": "Choose…", "de": "Auswählen…"],
         .rpDecompress:    ["en": "Decompress to plain .tsv", "de": "In unkomprimiertes .tsv entpacken"],
-        .rpReveal:        ["en": "Show in Finder", "de": "Im Finder anzeigen"],
+    case rpReveal:        ["en": "Show in Finder", "de": "Im Finder anzeigen"],
         .rpSavedToFmt:    ["en": "Saved to: %@", "de": "Gespeichert unter: %@"],
+        .rpScanImport:    ["en": "Import folder into metrics store", "de": "Ordner in Metrik-Speicher importieren"],
+        .rpImportedFmt:   ["en": "Imported %d rows from sales reports.", "de": "%d Zeilen aus Verkaufsberichten importiert."],
 
         // Sidebar groups + new sections
         .grpApp:        ["en": "App", "de": "App"],
@@ -1192,6 +1200,26 @@ enum Strings {
         .anAnalyticsUsingProfileFmt: ["en": "Analytics currently uses profile: %@",
                                       "de": "Analyse nutzt aktuell Profil: %@"],
         .anOpenProfileSettings: ["en": "Open profile settings", "de": "Profileinstellungen öffnen"],
+
+        // Local metrics store
+        .msTitle:           ["en": "Sales history", "de": "Verkaufshistorie"],
+        .msBody:            ["en": "Trends from imported Apple Sales Summary reports stored on disk.",
+                             "de": "Trends aus importierten Apple-Verkaufsübersichten auf der Festplatte."],
+        .msScanFolder:      ["en": "Scan reports folder", "de": "Berichtsordner scannen"],
+        .msImportCountFmt:  ["en": "%d records · %d files imported", "de": "%d Datensätze · %d Dateien importiert"],
+        .msNoData:          ["en": "Import daily sales reports from Reports to see trends here.",
+                             "de": "Importiere tägliche Verkaufsberichte unter „Berichte“, um hier Trends zu sehen."],
+        .msDownloads7d:     ["en": "Downloads (7d)", "de": "Downloads (7 T.)"],
+        .msProceeds7d:      ["en": "Proceeds (7d)", "de": "Erlöse (7 T.)"],
+        .msSubscriptions30d:["en": "Subscription events (30d)", "de": "Abo-Ereignisse (30 T.)"],
+        .msNextPayout:      ["en": "Next payout", "de": "Nächste Auszahlung"],
+        .msTrendTitle:      ["en": "14-day trend", "de": "14-Tage-Trend"],
+        .msFromReports:     ["en": "From local sales reports", "de": "Aus lokalen Verkaufsberichten"],
+        .msPortfolioTitle:  ["en": "Portfolio (7 days)", "de": "Portfolio (7 Tage)"],
+        .ovMetricsTitle:    ["en": "Performance", "de": "Performance"],
+        .ovFiscalTitle:     ["en": "Apple fiscal calendar", "de": "Apple-Geschäftskalender"],
+        .ovFiscalPeriodFmt: ["en": "FY%d · Period %d", "de": "GJ%d · Periode %d"],
+        .ovFiscalPaymentFmt:["en": "Payment on %@", "de": "Auszahlung am %@"],
 
         // Remote sync (CloudKit mirror)
         .secRemoteSync:  ["en": "Remote sync", "de": "Remote-Synchronisierung"],

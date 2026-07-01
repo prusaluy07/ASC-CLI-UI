@@ -5,6 +5,7 @@ import AppKit
 struct ReportsView: View {
     @EnvironmentObject var ascService: ASCService
     @EnvironmentObject var loc: LocalizationManager
+    @EnvironmentObject var metricsEngine: MetricsEngine
     let selectedApp: ASCApp?
 
     @State private var frequency = "DAILY"
@@ -25,6 +26,7 @@ struct ReportsView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     vendorCard
                     folderCard
+                    metricsImportCard
                     if ascService.vendorNumber.isEmpty {
                         Label(loc(.rpNeedVendor), systemImage: "info.circle")
                             .font(.callout)
@@ -41,7 +43,38 @@ struct ReportsView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .onAppear(perform: prefillDates)
+        .onAppear {
+            prefillDates()
+            if !ascService.reportsDirectory.isEmpty {
+                _ = metricsEngine.scanDirectory(ascService.reportsDirectory, apps: ascService.apps)
+            }
+        }
+    }
+
+    private var metricsImportCard: some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(loc(.msBody)).font(.caption).foregroundStyle(.secondary)
+                HStack(spacing: 12) {
+                    Button {
+                        let result = metricsEngine.scanDirectory(ascService.reportsDirectory, apps: ascService.apps)
+                        output = loc(.rpImportedFmt, result.rowsImported)
+                    } label: {
+                        Label(loc(.msScanFolder), systemImage: "tray.and.arrow.down.fill")
+                    }
+                    .disabled(isRunning || ascService.reportsDirectory.isEmpty)
+
+                    Text(loc(.msImportCountFmt, metricsEngine.recordCount, metricsEngine.importedFileCount))
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                }
+            }
+            .padding(6)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } label: {
+            Label(loc(.msTitle), systemImage: "chart.line.uptrend.xyaxis")
+        }
     }
 
     private var folderCard: some View {
@@ -242,6 +275,10 @@ struct ReportsView: View {
             output = result.succeeded ? (result.output.isEmpty ? "✓" : result.output) : result.errorMessage
             if result.succeeded, let savedPath, FileManager.default.fileExists(atPath: savedPath) {
                 lastSavedPath = savedPath
+                let imported = metricsEngine.importFile(at: savedPath, apps: ascService.apps)
+                if imported > 0 {
+                    output = (output ?? "") + "\n" + loc(.rpImportedFmt, imported)
+                }
             }
             isRunning = false
         }

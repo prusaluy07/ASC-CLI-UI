@@ -113,6 +113,7 @@ private struct MetricBarChart: View {
 struct AnalyticsView: View {
     @EnvironmentObject var ascService: ASCService
     @EnvironmentObject var loc: LocalizationManager
+    @EnvironmentObject var metricsEngine: MetricsEngine
     let selectedApp: ASCApp?
 
     @AppStorage(AppModeSettings.key) private var appMode = AppMode.online
@@ -135,6 +136,13 @@ struct AnalyticsView: View {
 
     private static let dateFmt: DateFormatter = {
         let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; f.locale = Locale(identifier: "en_US_POSIX"); return f
+    }()
+
+    private static let fiscalDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        f.timeStyle = .none
+        return f
     }()
 
     var body: some View {
@@ -160,6 +168,9 @@ struct AnalyticsView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
                         controls
+                        if let app = selectedApp, metricsEngine.hasData(for: app) {
+                            storedMetricsSection(for: app)
+                        }
                         if analyticsRestricted || reportForbidden {
                             permissionBanner
                         }
@@ -206,6 +217,47 @@ struct AnalyticsView: View {
         }
         .task(id: selectedApp?.id) {
             if selectedApp != nil && !loadedOnce && appMode == .online { await load() }
+            if !ascService.reportsDirectory.isEmpty {
+                _ = metricsEngine.scanDirectory(ascService.reportsDirectory, apps: ascService.apps)
+            }
+        }
+    }
+
+    private func storedMetricsSection(for app: ASCApp) -> some View {
+        let summary = metricsEngine.summary(for: app, days: 7)
+        let trend = metricsEngine.trend(for: app, days: 14)
+        let subs = metricsEngine.subscriptionSummary(for: app, days: 30)
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(loc(.msTitle)).font(.title3).fontWeight(.semibold)
+                Text(loc(.msFromReports)).font(.caption).foregroundStyle(.tertiary)
+                Spacer()
+            }
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 168), spacing: 12)], spacing: 12) {
+                MetricCard(title: loc(.msDownloads7d), metric: AnalyticsMetric(label: loc(.msDownloads7d), value: Double(summary.totalDownloads), delta: nil), isPercent: false)
+                MetricCard(title: loc(.msProceeds7d), metric: AnalyticsMetric(label: loc(.msProceeds7d), value: summary.proceeds, delta: nil), isPercent: false)
+                MetricCard(title: loc(.msSubscriptions30d), metric: AnalyticsMetric(label: loc(.msSubscriptions30d), value: Double(subs.subscriptionUnits), delta: nil), isPercent: false)
+                if let payment = AppleFiscalCalendar.nextPayment() {
+                    let dateText = Self.fiscalDateFormatter.string(from: payment.paymentDate)
+                    MetricCard(title: loc(.msNextPayout), metric: AnalyticsMetric(label: loc(.msNextPayout), value: nil, delta: nil, reason: dateText), isPercent: false)
+                }
+            }
+            if !trend.isEmpty {
+                GroupBox {
+                    Chart(trend) { point in
+                        LineMark(
+                            x: .value("Date", point.date),
+                            y: .value("Downloads", point.downloads)
+                        )
+                        .foregroundStyle(.blue)
+                    }
+                    .chartXAxis(.hidden)
+                    .frame(height: 140)
+                    .padding(6)
+                } label: {
+                    Label(loc(.msTrendTitle), systemImage: "chart.line.uptrend.xyaxis")
+                }
+            }
         }
     }
 

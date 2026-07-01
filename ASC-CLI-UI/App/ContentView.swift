@@ -120,6 +120,7 @@ struct ContentView: View {
     @EnvironmentObject var loc: LocalizationManager
     @EnvironmentObject var cloudSync: CloudKitSync
     @EnvironmentObject var syncEngine: SnapshotEngine
+    @EnvironmentObject var metricsEngine: MetricsEngine
     @AppStorage("asc.hasOnboarded") private var hasOnboarded = false
     @AppStorage(PrefetchSettings.enabledKey) private var prefetchEnabled = false
     @AppStorage(PrefetchSettings.sectionsKey) private var prefetchSectionsRaw = PrefetchSettings.defaultRaw
@@ -174,6 +175,7 @@ struct ContentView: View {
                 .environmentObject(loc)
                 .environmentObject(cloudSync)
                 .environmentObject(syncEngine)
+                .environmentObject(metricsEngine)
         }
         .onReceive(NotificationCenter.default.publisher(for: .ascOpenProfileSettings)) { _ in
             settingsInitialPane = .profiles

@@ -1,9 +1,11 @@
 import SwiftUI
+import Charts
 import ASCShared
 
 struct OverviewView: View {
     @EnvironmentObject var ascService: ASCService
     @EnvironmentObject var loc: LocalizationManager
+    @EnvironmentObject var metricsEngine: MetricsEngine
     @Binding var selectedApp: ASCApp?
     @Binding var selectedSection: SidebarItem?
     @AppStorage(PrefetchSettings.enabledKey) private var prefetchEnabled = false
@@ -27,6 +29,12 @@ struct OverviewView: View {
                     ModeSelector()
                         .padding(.horizontal, 20)
 
+                    if metricsEngine.recordCount > 0,
+                       !metricsEngine.portfolio(apps: ascService.apps).filter({ $0.downloads > 0 || $0.proceeds > 0 }).isEmpty {
+                        portfolioSection
+                            .padding(.horizontal, 20)
+                    }
+
                     LazyVGrid(columns: columns, spacing: 16) {
                         StatCard(
                             title: loc(.statApps),
@@ -49,6 +57,9 @@ struct OverviewView: View {
                     }
                     .padding(.horizontal, 20)
 
+                    fiscalCard
+                        .padding(.horizontal, 20)
+
                     currentAppCard
                         .padding(.horizontal, 20)
                 }
@@ -59,9 +70,53 @@ struct OverviewView: View {
             if ascService.apps.isEmpty { await ascService.loadApps() }
             if ascService.certificates.isEmpty { await ascService.loadCertificates() }
             if ascService.profiles.isEmpty { await ascService.loadProfiles() }
-            // Keep the picker and the card in sync: adopt the app the card already shows so
-            // there's a single source of truth (and so prefetch targets the visible app).
+            if !ascService.reportsDirectory.isEmpty {
+                _ = metricsEngine.scanDirectory(ascService.reportsDirectory, apps: ascService.apps)
+            }
             if selectedApp == nil, let first = ascService.apps.first { selectedApp = first }
+        }
+    }
+
+    private var portfolioSection: some View {
+        let entries = metricsEngine.portfolio(apps: ascService.apps, days: 7)
+            .filter { $0.downloads > 0 || $0.proceeds > 0 }
+        return VStack(alignment: .leading, spacing: 12) {
+            Text(loc(.msPortfolioTitle)).font(.title3).fontWeight(.semibold)
+            if entries.isEmpty {
+                Text(loc(.msNoData)).font(.callout).foregroundStyle(.secondary)
+            } else {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 200), spacing: 12)], spacing: 12) {
+                    ForEach(entries) { entry in
+                        PortfolioMetricCard(entry: entry) {
+                            if let app = ascService.apps.first(where: { $0.id == entry.appId }) {
+                                selectedApp = app
+                                selectedSection = .analytics
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var fiscalCard: some View {
+        GroupBox {
+            if let period = AppleFiscalCalendar.period(),
+               let payment = AppleFiscalCalendar.nextPayment() {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(loc(.ovFiscalPeriodFmt, period.fiscalYear, period.fiscalMonth))
+                        .font(.callout.weight(.semibold))
+                    Text(loc(.ovFiscalPaymentFmt, Self.displayDate(payment.paymentDate)))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(6)
+            } else {
+                Text("—").font(.callout).foregroundStyle(.secondary).padding(6)
+            }
+        } label: {
+            Label(loc(.ovFiscalTitle), systemImage: "calendar.badge.clock")
         }
     }
 
@@ -92,6 +147,11 @@ struct OverviewView: View {
                         .help(loc(.ovSwitchAppHelp))
                     }
 
+                    if metricsEngine.hasData(for: app) {
+                        Divider()
+                        appMetricsRow(for: app)
+                    }
+
                     if !ascService.apps.isEmpty {
                         Divider()
                         Toggle(isOn: $prefetchEnabled) {
@@ -106,6 +166,7 @@ struct OverviewView: View {
                         NavChip(title: loc(.secVersions), icon: "tag") { select(app, .versions) }
                         NavChip(title: loc(.secBuilds), icon: "hammer") { select(app, .builds) }
                         NavChip(title: loc(.secTestFlight), icon: "airplane") { select(app, .testflight) }
+                        NavChip(title: loc(.secAnalytics), icon: "chart.xyaxis.line") { select(app, .analytics) }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -127,6 +188,29 @@ struct OverviewView: View {
         }
     }
 
+    private func appMetricsRow(for app: ASCApp) -> some View {
+        let summary = metricsEngine.summary(for: app, days: 7)
+        let subs = metricsEngine.subscriptionSummary(for: app, days: 30)
+        return HStack(spacing: 16) {
+            miniMetric(loc(.msDownloads7d), value: "\(summary.totalDownloads)", delta: nil)
+            miniMetric(loc(.msProceeds7d), value: MetricFormat.value(summary.proceeds, percent: false), delta: nil)
+            miniMetric(loc(.msSubscriptions30d), value: "\(subs.subscriptionUnits)", delta: nil)
+            Spacer()
+        }
+    }
+
+    private func miniMetric(_ title: String, value: String, delta: Double?) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title).font(.caption2).foregroundStyle(.secondary)
+            Text(value).font(.callout.weight(.semibold)).monospacedDigit()
+            if let delta, delta != 0 {
+                Text(String(format: "%+.0f%%", delta))
+                    .font(.caption2)
+                    .foregroundStyle(delta > 0 ? .green : .red)
+            }
+        }
+    }
+
     private func select(_ app: ASCApp, _ section: SidebarItem) {
         selectedApp = app
         selectedSection = section
@@ -136,6 +220,50 @@ struct OverviewView: View {
         await ascService.loadApps()
         await ascService.loadCertificates()
         await ascService.loadProfiles()
+        _ = metricsEngine.scanDirectory(ascService.reportsDirectory, apps: ascService.apps)
+    }
+
+    private static let displayFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        f.timeStyle = .none
+        return f
+    }()
+
+    private static func displayDate(_ date: Date) -> String {
+        displayFormatter.string(from: date)
+    }
+}
+
+struct PortfolioMetricCard: View {
+    let entry: PortfolioMetricsEntry
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(entry.appName)
+                    .font(.callout.weight(.semibold))
+                    .lineLimit(1)
+                HStack(spacing: 12) {
+                    Label("\(entry.downloads)", systemImage: "arrow.down.circle")
+                        .font(.caption.monospacedDigit())
+                    Label(MetricFormat.value(entry.proceeds, percent: false), systemImage: "dollarsign.circle")
+                        .font(.caption.monospacedDigit())
+                }
+                .foregroundStyle(.secondary)
+                if let delta = entry.deltaDownloads {
+                    Text(String(format: "%+.0f%%", delta))
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(delta >= 0 ? .green : .red)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(Color.accentColor.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.secondary.opacity(0.12)))
+        }
+        .buttonStyle(.plain)
     }
 }
 

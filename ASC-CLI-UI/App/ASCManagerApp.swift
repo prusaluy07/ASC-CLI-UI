@@ -7,6 +7,7 @@ struct ASCManagerApp: App {
     @StateObject private var loc = LocalizationManager()
     @StateObject private var cloudSync: CloudKitSync
     @StateObject private var syncEngine: SnapshotEngine
+    @StateObject private var metricsEngine: MetricsEngine
 
     init() {
         let service = ASCService()
@@ -14,6 +15,7 @@ struct ASCManagerApp: App {
         _ascService = StateObject(wrappedValue: service)
         _cloudSync = StateObject(wrappedValue: sync)
         _syncEngine = StateObject(wrappedValue: SnapshotEngine(service: service, uploader: sync))
+        _metricsEngine = StateObject(wrappedValue: MetricsEngine())
     }
 
     var body: some Scene {
@@ -23,6 +25,7 @@ struct ASCManagerApp: App {
                 .environmentObject(loc)
                 .environmentObject(cloudSync)
                 .environmentObject(syncEngine)
+                .environmentObject(metricsEngine)
                 .frame(minWidth: 960, minHeight: 600)
                 .task { await ascService.refreshAuthStatus() }
         }
@@ -38,6 +41,7 @@ struct ASCManagerApp: App {
                 .environmentObject(loc)
                 .environmentObject(cloudSync)
                 .environmentObject(syncEngine)
+                .environmentObject(metricsEngine)
         }
     }
 }
