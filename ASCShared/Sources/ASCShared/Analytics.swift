@@ -145,6 +145,7 @@ public enum AnalyticsCatalog {
         .init(key: .anImpressions, synonyms: ["impression"], group: 0),
         .init(key: .anPageViews, synonyms: ["productpageview", "pageview", "productpage"], group: 0),
         .init(key: .anUpdates, synonyms: ["update"], group: 0),
+        .init(key: .anReturns, synonyms: ["return", "refund"], group: 1),
         // Revenue
         .init(key: .anProceeds, synonyms: ["proceeds", "developerproceeds", "erlose", "revenue"], group: 1),
         .init(key: .anPayingUsers, synonyms: ["payinguser", "payingaccount", "payer"], group: 1),

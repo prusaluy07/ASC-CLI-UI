@@ -232,13 +232,7 @@ struct ReportsView: View {
                         .controlSize(.small)
                     }
                 }
-                ScrollView {
-                    Text(text)
-                        .font(.system(.caption, design: .monospaced))
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .frame(maxHeight: 240)
+                OutputView(text: text, maxHeight: 240)
             }
             .padding(6)
         } label: {

@@ -44,6 +44,12 @@ public enum AppleFiscalCalendar {
             AppleFiscalPeriod(fiscalYear: 2026, fiscalMonth: 4, periodStart: d(2026, 1, 4), periodEnd: d(2026, 1, 31), paymentDate: d(2026, 3, 5)),
             AppleFiscalPeriod(fiscalYear: 2026, fiscalMonth: 5, periodStart: d(2026, 2, 1), periodEnd: d(2026, 2, 28), paymentDate: d(2026, 4, 2)),
             AppleFiscalPeriod(fiscalYear: 2026, fiscalMonth: 6, periodStart: d(2026, 3, 1), periodEnd: d(2026, 4, 4), paymentDate: d(2026, 5, 7)),
+            AppleFiscalPeriod(fiscalYear: 2026, fiscalMonth: 7, periodStart: d(2026, 4, 5), periodEnd: d(2026, 5, 2), paymentDate: d(2026, 6, 4)),
+            AppleFiscalPeriod(fiscalYear: 2026, fiscalMonth: 8, periodStart: d(2026, 5, 3), periodEnd: d(2026, 5, 30), paymentDate: d(2026, 7, 2)),
+            AppleFiscalPeriod(fiscalYear: 2026, fiscalMonth: 9, periodStart: d(2026, 6, 1), periodEnd: d(2026, 7, 5), paymentDate: d(2026, 8, 6)),
+            AppleFiscalPeriod(fiscalYear: 2026, fiscalMonth: 10, periodStart: d(2026, 7, 6), periodEnd: d(2026, 8, 2), paymentDate: d(2026, 9, 3)),
+            AppleFiscalPeriod(fiscalYear: 2026, fiscalMonth: 11, periodStart: d(2026, 8, 3), periodEnd: d(2026, 8, 30), paymentDate: d(2026, 10, 1)),
+            AppleFiscalPeriod(fiscalYear: 2026, fiscalMonth: 12, periodStart: d(2026, 8, 31), periodEnd: d(2026, 10, 4), paymentDate: d(2026, 11, 5)),
         ]
     }()
 

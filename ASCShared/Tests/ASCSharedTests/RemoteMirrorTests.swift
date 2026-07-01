@@ -151,6 +151,23 @@ final class RemoteMirrorTests: XCTestCase {
         XCTAssertEqual(s["available"], "1")
     }
 
+    func testStoredMetricsSummary() {
+        let json = #"{"appId":"1","days":7,"downloads":120,"proceeds":45.5,"returns":3}"#
+        let s = RemoteMirror.summarize(section: .storedMetrics, payloadJSON: json)
+        XCTAssertEqual(s["downloads"], "120")
+        XCTAssertEqual(s["proceeds"], "45.5")
+        XCTAssertEqual(s["returns"], "3")
+    }
+
+    func testMarketRankSummary() {
+        let json = #"{"country":"us","chart":"top-free/apps","rank":12,"name":"Demo","delta":-2}"#
+        let s = RemoteMirror.summarize(section: .marketRank, payloadJSON: json)
+        XCTAssertEqual(s["rank"], "12")
+        XCTAssertEqual(s["chart"], "top-free/apps")
+        XCTAssertEqual(s["country"], "us")
+        XCTAssertEqual(s["delta"], "-2")
+    }
+
     func testSummarizeIsDefensiveOnGarbage() {
         XCTAssertTrue(RemoteMirror.summarize(section: .status, payloadJSON: "not json").isEmpty)
         XCTAssertTrue(RemoteMirror.summarize(section: .versions, payloadJSON: "").isEmpty)

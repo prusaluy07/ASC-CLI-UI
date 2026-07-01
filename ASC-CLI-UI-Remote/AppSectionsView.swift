@@ -52,7 +52,7 @@ struct AppSectionsView: View {
         // `appName` is metadata for the title, not a section headline — drop it here.
         let summary = (snapshot.summary ?? [:]).filter { $0.key != "appName" }
         guard !summary.isEmpty else { return nil }
-        let priority = ["health", "latestVersion", "latestBuild", "averageRating", "count"]
+        let priority = ["health", "latestVersion", "latestBuild", "averageRating", "rank", "downloads", "proceeds", "count"]
         if let key = priority.first(where: { summary[$0] != nil }), let value = summary[key] {
             return value
         }
@@ -70,6 +70,8 @@ struct AppSectionsView: View {
         case .subscriptions:  return "repeat"
         case .inAppPurchases: return "cart"
         case .analytics:      return "chart.xyaxis.line"
+        case .storedMetrics:  return "chart.line.uptrend.xyaxis"
+        case .marketRank:     return "chart.bar.fill"
         }
     }
 }

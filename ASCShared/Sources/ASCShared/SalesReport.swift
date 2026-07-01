@@ -5,7 +5,7 @@ import Foundation
 /// One aggregated line from an Apple **Summary Sales** TSV (daily / weekly / monthly).
 public struct SalesReportRow: Sendable, Hashable, Codable, Identifiable {
     public var id: String {
-        "\(reportDate)|\(appleIdentifier)|\(sku)|\(productType)|\(countryCode)|\(orderType ?? "")"
+        "\(reportDate)|\(appleIdentifier)|\(sku)|\(productTypeIdentifier)|\(countryCode)|\(orderType ?? "")"
     }
 
     public let reportDate: String          // yyyy-MM-dd (Begin Date)
@@ -60,6 +60,9 @@ public struct SalesReportRow: Sendable, Hashable, Codable, Identifiable {
     public var isSubscription: Bool {
         SalesProductType.isSubscription(productTypeIdentifier, subscription: subscription)
     }
+
+    /// Negative unit counts in Summary Sales reports represent returns/refunds.
+    public var isReturn: Bool { units < 0 }
 }
 
 // MARK: - Product type helpers

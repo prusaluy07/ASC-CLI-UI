@@ -6,6 +6,7 @@ struct OverviewView: View {
     @EnvironmentObject var ascService: ASCService
     @EnvironmentObject var loc: LocalizationManager
     @EnvironmentObject var metricsEngine: MetricsEngine
+    @EnvironmentObject var marketEngine: MarketEngine
     @Binding var selectedApp: ASCApp?
     @Binding var selectedSection: SidebarItem?
     @AppStorage(PrefetchSettings.enabledKey) private var prefetchEnabled = false
@@ -60,6 +61,9 @@ struct OverviewView: View {
                     fiscalCard
                         .padding(.horizontal, 20)
 
+                    marketMomentumCard
+                        .padding(.horizontal, 20)
+
                     currentAppCard
                         .padding(.horizontal, 20)
                 }
@@ -72,6 +76,9 @@ struct OverviewView: View {
             if ascService.profiles.isEmpty { await ascService.loadProfiles() }
             if !ascService.reportsDirectory.isEmpty {
                 _ = metricsEngine.scanDirectory(ascService.reportsDirectory, apps: ascService.apps)
+            }
+            if marketEngine.feed == nil {
+                await marketEngine.refreshCharts()
             }
             if selectedApp == nil, let first = ascService.apps.first { selectedApp = first }
         }
@@ -117,6 +124,38 @@ struct OverviewView: View {
             }
         } label: {
             Label(loc(.ovFiscalTitle), systemImage: "calendar.badge.clock")
+        }
+    }
+
+    private var marketMomentumCard: some View {
+        GroupBox {
+            if let index = marketEngine.marketIndex {
+                let title: String = switch index.direction {
+                case "up": loc(.mktMarketIndexUp)
+                case "down": loc(.mktMarketIndexDown)
+                default: loc(.mktMarketIndexFlat)
+                }
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(title).font(.callout.weight(.semibold))
+                    Text(loc(.mktMarketIndexFmt, title,
+                             index.upwardMoves, index.downwardMoves, index.newEntrants))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Button { selectedSection = .marketCharts } label: {
+                        Label(loc(.secMarketCharts), systemImage: "chart.bar.fill")
+                    }
+                    .buttonStyle(.link)
+                    .font(.caption)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(6)
+            } else if marketEngine.isLoading {
+                ProgressView(loc(.mktLoading)).padding(6)
+            } else {
+                Text("—").font(.callout).foregroundStyle(.secondary).padding(6)
+            }
+        } label: {
+            Label(loc(.mktMarketIndexTitle), systemImage: "globe.americas")
         }
     }
 
@@ -189,11 +228,16 @@ struct OverviewView: View {
     }
 
     private func appMetricsRow(for app: ASCApp) -> some View {
-        let summary = metricsEngine.summary(for: app, days: 7)
+        let week = metricsEngine.weekMetrics(for: app)
         let subs = metricsEngine.subscriptionSummary(for: app, days: 30)
+        let downloads = (week[.anFirstDownloads]?.value ?? 0) + (week[.anRedownloads]?.value ?? 0)
         return HStack(spacing: 16) {
-            miniMetric(loc(.msDownloads7d), value: "\(summary.totalDownloads)", delta: nil)
-            miniMetric(loc(.msProceeds7d), value: MetricFormat.value(summary.proceeds, percent: false), delta: nil)
+            miniMetric(loc(.msDownloads7d),
+                       value: MetricFormat.value(downloads, percent: false),
+                       delta: week[.anFirstDownloads]?.delta)
+            miniMetric(loc(.msProceeds7d),
+                       value: MetricFormat.value(week[.anProceeds]?.value ?? 0, percent: false),
+                       delta: week[.anProceeds]?.delta)
             miniMetric(loc(.msSubscriptions30d), value: "\(subs.subscriptionUnits)", delta: nil)
             Spacer()
         }
@@ -252,10 +296,15 @@ struct PortfolioMetricCard: View {
                         .font(.caption.monospacedDigit())
                 }
                 .foregroundStyle(.secondary)
-                if let delta = entry.deltaDownloads {
-                    Text(String(format: "%+.0f%%", delta))
+                if let deltaDL = entry.deltaDownloads {
+                    Text(String(format: "↓ %+.0f%%", deltaDL))
                         .font(.caption2.weight(.medium))
-                        .foregroundStyle(delta >= 0 ? .green : .red)
+                        .foregroundStyle(deltaDL >= 0 ? .green : .red)
+                }
+                if let deltaPR = entry.deltaProceeds {
+                    Text(String(format: "$ %+.0f%%", deltaPR))
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(deltaPR >= 0 ? .green : .red)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

@@ -8,6 +8,8 @@ public struct AppMetricsSummary: Sendable, Equatable {
     public let updates: Int
     public let iapUnits: Int
     public let subscriptionUnits: Int
+    public let subscriptionProceeds: Double
+    public let returns: Int
     public let proceeds: Double
     public let rowCount: Int
 
@@ -16,6 +18,8 @@ public struct AppMetricsSummary: Sendable, Equatable {
                 updates: Int = 0,
                 iapUnits: Int = 0,
                 subscriptionUnits: Int = 0,
+                subscriptionProceeds: Double = 0,
+                returns: Int = 0,
                 proceeds: Double = 0,
                 rowCount: Int = 0) {
         self.firstDownloads = firstDownloads
@@ -23,6 +27,8 @@ public struct AppMetricsSummary: Sendable, Equatable {
         self.updates = updates
         self.iapUnits = iapUnits
         self.subscriptionUnits = subscriptionUnits
+        self.subscriptionProceeds = subscriptionProceeds
+        self.returns = returns
         self.proceeds = proceeds
         self.rowCount = rowCount
     }
@@ -35,14 +41,23 @@ public struct AppMetricsSummary: Sendable, Equatable {
         var updates = 0
         var iapUnits = 0
         var subscriptionUnits = 0
+        var subscriptionProceeds = 0.0
+        var returns = 0
         var proceeds = 0.0
         for row in rows {
+            proceeds += row.proceeds
+            if row.isReturn {
+                returns += abs(row.units)
+                continue
+            }
             if row.isFirstDownload { firstDownloads += row.units }
             else if row.isRedownload { redownloads += row.units }
             else if row.isUpdate { updates += row.units }
-            else if row.isSubscription { subscriptionUnits += row.units }
+            else if row.isSubscription {
+                subscriptionUnits += row.units
+                subscriptionProceeds += row.proceeds
+            }
             else if row.isInAppPurchase { iapUnits += row.units }
-            proceeds += row.proceeds
         }
         return AppMetricsSummary(
             firstDownloads: firstDownloads,
@@ -50,22 +65,38 @@ public struct AppMetricsSummary: Sendable, Equatable {
             updates: updates,
             iapUnits: iapUnits,
             subscriptionUnits: subscriptionUnits,
+            subscriptionProceeds: subscriptionProceeds,
+            returns: returns,
             proceeds: proceeds,
             rowCount: rows.count
         )
     }
 }
 
-public struct MetricsTrendPoint: Sendable, Identifiable, Equatable {
+public struct MetricsTrendPoint: Sendable, Identifiable, Equatable, Codable {
     public var id: String { date }
     public let date: String
     public let downloads: Int
     public let proceeds: Double
+    public let iapUnits: Int
+    public let updates: Int
+    public let returns: Int
+    public let subscriptionUnits: Int
 
-    public init(date: String, downloads: Int, proceeds: Double) {
+    public init(date: String,
+                downloads: Int,
+                proceeds: Double,
+                iapUnits: Int = 0,
+                updates: Int = 0,
+                returns: Int = 0,
+                subscriptionUnits: Int = 0) {
         self.date = date
         self.downloads = downloads
         self.proceeds = proceeds
+        self.iapUnits = iapUnits
+        self.updates = updates
+        self.returns = returns
+        self.subscriptionUnits = subscriptionUnits
     }
 }
 
@@ -236,10 +267,17 @@ public final class MetricsStore: @unchecked Sendable {
         let endStr = fmt.string(from: end)
         let appRows = rows(for: app, from: startStr, to: endStr)
 
-        var byDate: [String: (downloads: Int, proceeds: Double)] = [:]
+        var byDate: [String: (downloads: Int, proceeds: Double, iap: Int, updates: Int, returns: Int, subs: Int)] = [:]
         for row in appRows {
-            var bucket = byDate[row.reportDate] ?? (0, 0)
-            if row.isFirstDownload || row.isRedownload { bucket.downloads += row.units }
+            var bucket = byDate[row.reportDate] ?? (0, 0, 0, 0, 0, 0)
+            if row.isReturn {
+                bucket.returns += abs(row.units)
+            } else {
+                if row.isFirstDownload || row.isRedownload { bucket.downloads += row.units }
+                if row.isUpdate { bucket.updates += row.units }
+                if row.isInAppPurchase { bucket.iap += row.units }
+                if row.isSubscription { bucket.subs += row.units }
+            }
             bucket.proceeds += row.proceeds
             byDate[row.reportDate] = bucket
         }
@@ -248,12 +286,97 @@ public final class MetricsStore: @unchecked Sendable {
         var cursor = start
         while cursor <= end {
             let key = fmt.string(from: cursor)
-            let bucket = byDate[key] ?? (0, 0)
-            points.append(MetricsTrendPoint(date: key, downloads: bucket.downloads, proceeds: bucket.proceeds))
+            let bucket = byDate[key] ?? (0, 0, 0, 0, 0, 0)
+            points.append(MetricsTrendPoint(
+                date: key,
+                downloads: bucket.downloads,
+                proceeds: bucket.proceeds,
+                iapUnits: bucket.iap,
+                updates: bucket.updates,
+                returns: bucket.returns,
+                subscriptionUnits: bucket.subs
+            ))
             guard let next = cal.date(byAdding: .day, value: 1, to: cursor) else { break }
             cursor = next
         }
         return points
+    }
+
+    public func comparePeriods(for app: ASCApp, days: Int, endingOn endDate: Date = .now) -> MetricsPeriodComparison {
+        let cal = Calendar(identifier: .gregorian)
+        let end = cal.startOfDay(for: endDate)
+        let periodStart = cal.date(byAdding: .day, value: -(days - 1), to: end) ?? end
+        let prevEnd = cal.date(byAdding: .day, value: -1, to: periodStart) ?? periodStart
+        let prevStart = cal.date(byAdding: .day, value: -(days - 1), to: prevEnd) ?? prevEnd
+        let fmt = Self.dateFormatter
+        let current = summary(for: app, from: fmt.string(from: periodStart), to: fmt.string(from: end))
+        let previous = summary(for: app, from: fmt.string(from: prevStart), to: fmt.string(from: prevEnd))
+        return MetricsPeriodComparison(current: current, previous: previous, days: days)
+    }
+
+    public func exportCSV(for app: ASCApp) -> String {
+        let rows = rows(for: app)
+        var lines = ["date,sku,title,units,proceeds,country,product_type"]
+        for row in rows {
+            let fields = [
+                row.reportDate, row.sku, Self.csvEscape(row.title),
+                String(row.units), String(format: "%.4f", row.proceeds),
+                row.countryCode, row.productTypeIdentifier
+            ]
+            lines.append(fields.joined(separator: ","))
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    public func exportJSON(for app: ASCApp) -> String {
+        let rows = rows(for: app)
+        guard let data = try? JSONEncoder().encode(rows),
+              let text = String(data: data, encoding: .utf8) else { return "[]" }
+        return text
+    }
+
+    /// Proceeds aggregated for a fiscal period, plus whether daily sales reports look complete.
+    public func fiscalProceeds(for app: ASCApp, period: AppleFiscalPeriod) -> (proceeds: Double, isComplete: Bool) {
+        let fmt = Self.dateFormatter
+        let start = fmt.string(from: period.periodStart)
+        let end = fmt.string(from: period.periodEnd)
+        let summary = summary(for: app, from: start, to: end)
+        let reportRows = rows(for: app, from: start, to: end)
+        let uniqueDays = Set(reportRows.map(\.reportDate)).count
+        let cal = Calendar(identifier: .gregorian)
+        let expectedDays = (cal.dateComponents([.day], from: period.periodStart, to: period.periodEnd).day ?? 0) + 1
+        let periodEnded = period.periodEnd < cal.startOfDay(for: .now)
+        let isComplete = periodEnded && uniqueDays >= max(1, expectedDays - 2)
+        return (summary.proceeds, isComplete)
+    }
+
+    public func exportPortfolioJSON(apps: [ASCApp]) -> String {
+        struct Entry: Codable {
+            let appId: String
+            let appName: String
+            let downloads: Int
+            let proceeds: Double
+        }
+        let entries = apps.map { app -> Entry in
+            let s = summary(for: app, from: dateString(daysAgo: 6), to: dateString(daysAgo: 0))
+            return Entry(appId: app.id, appName: app.name, downloads: s.totalDownloads, proceeds: s.proceeds)
+        }
+        guard let data = try? JSONEncoder().encode(entries),
+              let text = String(data: data, encoding: .utf8) else { return "[]" }
+        return text
+    }
+
+    private func dateString(daysAgo: Int) -> String {
+        let cal = Calendar(identifier: .gregorian)
+        let date = cal.date(byAdding: .day, value: -daysAgo, to: cal.startOfDay(for: .now)) ?? .now
+        return Self.dateFormatter.string(from: date)
+    }
+
+    private static func csvEscape(_ value: String) -> String {
+        if value.contains(",") || value.contains("\"") {
+            return "\"\(value.replacingOccurrences(of: "\"", with: "\"\""))\""
+        }
+        return value
     }
 
     public func portfolio(apps: [ASCApp], days: Int = 7, limit: Int = 5) -> [PortfolioMetricsEntry] {
@@ -267,7 +390,7 @@ public final class MetricsStore: @unchecked Sendable {
         let prevStart = fmt.string(from: cal.date(byAdding: .day, value: -(days - 1), to: prevEnd) ?? prevEnd)
         let prevEndStr = fmt.string(from: prevEnd)
 
-        return apps.prefix(limit).map { app in
+        return apps.map { app in
             let current = summary(for: app, from: curStart, to: curEnd)
             let previous = summary(for: app, from: prevStart, to: prevEndStr)
             return PortfolioMetricsEntry(
@@ -279,6 +402,9 @@ public final class MetricsStore: @unchecked Sendable {
                 deltaProceeds: Self.percentDelta(current: current.proceeds, previous: previous.proceeds)
             )
         }
+        .sorted { $0.downloads > $1.downloads || ($0.downloads == $1.downloads && $0.proceeds > $1.proceeds) }
+        .prefix(limit)
+        .map { $0 }
     }
 
     // MARK: - Private

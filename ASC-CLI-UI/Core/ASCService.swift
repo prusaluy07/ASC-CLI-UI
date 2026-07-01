@@ -525,7 +525,7 @@ final class ASCService: ObservableObject {
     }
 
     func financeRegions() async -> CommandResult {
-        await run(["finance", "regions", "--output", "table"], json: false, capability: .finance)
+        await run(["finance", "regions"], capability: .finance)
     }
 
     // MARK: - Build upload & publish
@@ -538,7 +538,7 @@ final class ASCService: ObservableObject {
         if !version.isEmpty { args += ["--version", version] }
         if !buildNumber.isEmpty { args += ["--build-number", buildNumber] }
         if dryRun { args.append("--dry-run") }
-        return await run(args, json: false)
+        return await run(args)
     }
 
     func publishAppStore(appId: String, ipaPath: String, version: String,
@@ -551,13 +551,13 @@ final class ASCService: ObservableObject {
         } else if dryRun {
             args.append("--dry-run")
         }
-        return await run(args, json: false)
+        return await run(args)
     }
 
     func publishTestFlight(appId: String, ipaPath: String, groupId: String?) async -> CommandResult {
         var args = ["publish", "testflight", "--app", appId, "--ipa", ipaPath]
         if let groupId, !groupId.isEmpty { args += ["--group", groupId] }
-        return await run(args, json: false)
+        return await run(args)
     }
 
     // MARK: - Metadata files
@@ -569,7 +569,7 @@ final class ASCService: ObservableObject {
     func metadataApply(appId: String, version: String, dir: String, dryRun: Bool) async -> CommandResult {
         var args = ["metadata", "apply", "--app", appId, "--version", version, "--dir", dir]
         if dryRun { args.append("--dry-run") }
-        return await run(args, json: false)
+        return await run(args)
     }
 
     func metadataValidate(dir: String) async -> CommandResult {
@@ -635,13 +635,13 @@ final class ASCService: ObservableObject {
     func xcRun(appId: String, workflow: String, branch: String, wait: Bool) async -> CommandResult {
         var args = ["xcode-cloud", "run", "--app", appId, "--workflow", workflow, "--branch", branch]
         if wait { args.append("--wait") }
-        return await run(args, json: false)
+        return await run(args)
     }
 
     func xcStatus(runId: String, wait: Bool) async -> CommandResult {
         var args = ["xcode-cloud", "status", "--run-id", runId]
         if wait { args.append("--wait") }
-        return await run(args, json: false)
+        return await run(args)
     }
 
     // MARK: - Bundle IDs & notarization
@@ -659,7 +659,7 @@ final class ASCService: ObservableObject {
     func notarizationSubmit(file: String, wait: Bool) async -> CommandResult {
         var args = ["notarization", "submit", "--file", file]
         if wait { args.append("--wait") }
-        return await run(args, json: false)
+        return await run(args)
     }
 
     func notarizationStatus(id: String) async -> CommandResult {
@@ -672,7 +672,7 @@ final class ASCService: ObservableObject {
         var args = ["testflight", "feedback", "list", "--app", appId,
                     "--output", "table", "--limit", "100", "--sort", "-createdDate"]
         if includeScreenshots { args.append("--include-screenshots") }
-        return await run(args, json: false)
+        return await run(args)
     }
 
     func testflightCrashesList(appId: String) async -> CommandResult {
@@ -689,13 +689,13 @@ final class ASCService: ObservableObject {
     func workflowList(file: String?) async -> CommandResult {
         var args = ["workflow", "list", "--all", "--pretty"]
         if let file, !file.isEmpty { args += ["--file", file] }
-        return await run(args, json: false)
+        return await run(args)
     }
 
     func workflowValidate(file: String?) async -> CommandResult {
         var args = ["workflow", "validate", "--pretty"]
         if let file, !file.isEmpty { args += ["--file", file] }
-        return await run(args, json: false)
+        return await run(args)
     }
 
     /// Runs (or resumes) a named workflow. Workflows execute arbitrary shell — callers gate this behind a confirmation.
@@ -708,7 +708,7 @@ final class ASCService: ObservableObject {
         args.append(name)
         // --resume reuses the saved params; passing extra KEY:VALUE is rejected.
         if !isResume { args += params }
-        return await run(args, json: false)
+        return await run(args)
     }
 
     // MARK: - Apple Ads (separate Apple Ads OAuth credentials)
@@ -729,7 +729,7 @@ final class ASCService: ObservableObject {
                     "--name", name, "--client-id", clientId, "--team-id", teamId,
                     "--key-id", keyId, "--private-key", privateKeyPath]
         if !org.isEmpty { args += ["--org", org] }
-        return await run(args, json: false)
+        return await run(args)
     }
 
     func adsViewMe() async -> CommandResult {
@@ -809,14 +809,14 @@ final class ASCService: ObservableObject {
     // MARK: - Customer reviews
 
     func reviewsList(appId: String, stars: Int?, territory: String, onlyUnresponded: Bool) async -> CommandResult {
-        var args = ["reviews", "--app", appId, "--output", "table", "--limit", "50", "--sort", "-createdDate"]
+        var args = ["reviews", "--app", appId, "--limit", "100", "--sort", "-createdDate"]
         if let stars { args += ["--stars", String(stars)] }
         if !territory.isEmpty { args += ["--territory", territory] }
         if onlyUnresponded { args.append("--only-unresponded") }
-        return await run(args, json: false)
+        return await run(args)
     }
     func reviewsRatings(appId: String) async -> CommandResult {
-        await run(["reviews", "ratings", "--app", appId, "--output", "table"], json: false)
+        await run(["reviews", "ratings", "--app", appId])
     }
     func reviewRespond(reviewId: String, text: String) async -> CommandResult {
         await run(["reviews", "respond", "--review-id", reviewId, "--response", text], json: false)
@@ -902,7 +902,7 @@ final class ASCService: ObservableObject {
     func categoriesSet(appId: String, primary: String, secondary: String) async -> CommandResult {
         var args = ["categories", "set", "--app", appId, "--primary", primary]
         if !secondary.isEmpty { args += ["--secondary", secondary] }
-        return await run(args, json: false)
+        return await run(args)
     }
     func eulaView(appId: String) async -> CommandResult {
         await run(["eula", "view", "--app", appId, "--pretty"])
@@ -939,7 +939,7 @@ final class ASCService: ObservableObject {
     func preOrderEnable(appId: String, territories: String, releaseDate: String) async -> CommandResult {
         var args = ["pre-orders", "enable", "--app", appId, "--territory", territories]
         if !releaseDate.isEmpty { args += ["--release-date", releaseDate] }
-        return await run(args, json: false)
+        return await run(args)
     }
     /// Mutating: disables pre-orders for a territory availability.
     func preOrderDisable(territoryAvailabilityId: String) async -> CommandResult {
@@ -959,7 +959,7 @@ final class ASCService: ObservableObject {
         var args = ["nominations", "create", "--app", appId, "--name", name, "--type", type]
         if !description.isEmpty { args += ["--description", description] }
         args.append(submitted ? "--submitted=true" : "--submitted=false")
-        return await run(args, json: false)
+        return await run(args)
     }
     /// Mutating: deletes a featuring nomination.
     func nominationDelete(id: String) async -> CommandResult {
@@ -969,7 +969,7 @@ final class ASCService: ObservableObject {
     // MARK: - Team & devices
 
     func usersList() async -> CommandResult {
-        await run(["users", "list", "--output", "table"], json: false, capability: .admin)
+        await run(["users", "list"], capability: .admin)
     }
     func usersInvite(email: String, roles: String, allApps: Bool) async -> CommandResult {
         var args = ["users", "invite", "--email", email, "--roles", roles]
@@ -977,7 +977,7 @@ final class ASCService: ObservableObject {
         return await run(args, json: false, capability: .admin)
     }
     func devicesList() async -> CommandResult {
-        await run(["devices", "list", "--output", "table"], json: false)
+        await run(["devices", "list"])
     }
     func deviceLocalUdid() async -> CommandResult {
         await run(["devices", "local-udid"], json: false)
@@ -986,15 +986,15 @@ final class ASCService: ObservableObject {
         await run(["devices", "register", "--name", name, "--udid", udid, "--platform", platform], json: false)
     }
     func sandboxList() async -> CommandResult {
-        await run(["sandbox", "list", "--output", "table"], json: false)
+        await run(["sandbox", "list"])
     }
 
     // MARK: - Tools (account, diagnostics, webhooks, fastlane)
 
     func accountStatus(appId: String?) async -> CommandResult {
-        var args = ["account", "status", "--output", "table"]
+        var args = ["account", "status"]
         if let appId, !appId.isEmpty { args += ["--app", appId] }
-        return await run(args, json: false)
+        return await run(args)
     }
     func authDoctor() async -> CommandResult {
         await run(["auth", "doctor"], json: false)

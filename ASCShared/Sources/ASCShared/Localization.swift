@@ -116,7 +116,7 @@ public enum LocKey: String {
     case reportsTitle, rpVendor, rpVendorHint, rpNeedVendor, rpAnalytics, rpFinance
     case rpRequests, rpCreateRequest, rpSalesReport, rpFrequency, rpDaily, rpWeekly, rpMonthly
     case rpDate, rpDownload, rpRegion, rpFinanceRegions, rpFinanceReport, rpResult, rpSaveVendor
-    case rpFolder, rpChooseFolder, rpDecompress, rpReveal, rpSavedToFmt
+    case rpFolder, rpChooseFolder, rpDecompress, rpReveal, rpSavedToFmt, rpScanImport, rpImportedFmt
 
     // Sidebar groups + new sections
     case grpApp, grpBuild, grpRelease, grpDeveloper
@@ -252,7 +252,7 @@ public enum LocKey: String {
     case secAnalytics, anTitle, anWeek, anLoad, anNeedVendorSales, anInsufficient
     case anWeekRangeFmt, anRaw, anWeekVsPrev, an30dVsPrev
     case anAcquisition, anRevenue, anSubscriptions, anUsage
-    case anFirstDownloads, anRedownloads, anConversion, anImpressions, anPageViews, anUpdates
+    case anFirstDownloads, anRedownloads, anConversion, anImpressions, anPageViews, anUpdates, anReturns
     case anProceeds, anPayingUsers, anIap, anActiveSubs, anPaidSubs, anMrr, anRetention, anCrashes
     case anChartAcq, anChartRev, anNoChartData, an30dRevenue
     case anAllMetrics, anAnalyticsRestricted, anStatusUnavailable
@@ -272,6 +272,36 @@ public enum LocKey: String {
 
     // Marketing (custom product pages, experiments, pre-orders, nominations)
     case secMarketing, mkBody, mkProductPages, mkPreOrders, mkNominations
+
+    // Market (public charts, iTunes search, SDK radar — Milestone 2)
+    case grpMarket
+    case secMarketCharts, secMarketSearch, secMarketSDKs
+    case mktChartsBody, mktSearchBody, mktSDKsBody
+    case mktCountry, mktRefresh, mktLoading, mktError
+    case mktChartFree, mktChartPaid, mktChartGrossing, mktChartApps, mktChartGames
+    case mktBookmark, mktBookmarked, mktRankFmt
+    case mktSearchPlaceholder, mktNoResults, mktScreenshots, mktDescription, mktRatingFmt
+    case mktMarketIndexTitle, mktMarketIndexUp, mktMarketIndexDown, mktMarketIndexFlat
+    case mktMarketIndexFmt, mktRankDeltaFmt, mktSDKDisclaimer, mktSDKMatches
+    case mktCompareOwnApps, mktNotInChart, mktOpenStore
+
+    // Export + onboarding reports
+    case exportCSV, exportJSON, exportSavedFmt
+    case obReportsTitle, obReportsBody, obReportsVendorHint, obReportsFolderHint
+
+    // Reviews table (M3)
+    case rvTable, rvSearch, rvDate, rvTitle, rvBodyCol, rvResponded, rvNotResponded
+    case rvRatingsSummary, rvAvgRating, rvTotalRatings
+
+    // Payments tracker (M3)
+    case secPayments, payBody, payNoDataTitle, payNoDataBody
+    case payFiscalCalendar, payCurrentPeriod, payHistory, payPeriod, payPaymentDate
+    case payProceeds, payStatus, payStatusUpcoming, payStatusPaid, payStatusIncomplete
+    case payIncompleteHint
+
+    // Tools export + local API (M3)
+    case tlExport, tlExportBody, tlExportMetricsCSV, tlExportMetricsJSON, tlExportCharts
+    case tlLocalAPI, tlLocalAPIHint
     case mkCustomPages, mkExperiments, mkPageName, mkPageId
     case mkTerritories, mkReleaseDate, mkTaId, mkAppNote
     case mkStatus, mkNomId, mkNomName, mkNomType, mkNomDesc, mkSubmitted
@@ -676,7 +706,7 @@ enum Strings {
         .rpFolder:        ["en": "Save Folder", "de": "Speicherordner"],
         .rpChooseFolder:  ["en": "Choose…", "de": "Auswählen…"],
         .rpDecompress:    ["en": "Decompress to plain .tsv", "de": "In unkomprimiertes .tsv entpacken"],
-    case rpReveal:        ["en": "Show in Finder", "de": "Im Finder anzeigen"],
+        .rpReveal:        ["en": "Show in Finder", "de": "Im Finder anzeigen"],
         .rpSavedToFmt:    ["en": "Saved to: %@", "de": "Gespeichert unter: %@"],
         .rpScanImport:    ["en": "Import folder into metrics store", "de": "Ordner in Metrik-Speicher importieren"],
         .rpImportedFmt:   ["en": "Imported %d rows from sales reports.", "de": "%d Zeilen aus Verkaufsberichten importiert."],
@@ -1120,6 +1150,7 @@ enum Strings {
         .anImpressions:  ["en": "Impressions", "de": "Impressionen"],
         .anPageViews:    ["en": "Product page views", "de": "Produktseitenaufrufe"],
         .anUpdates:      ["en": "Updates", "de": "Aktualisierungen"],
+        .anReturns:       ["en": "Returns", "de": "Rückgaben"],
         .anProceeds:     ["en": "Proceeds", "de": "Erlöse"],
         .anPayingUsers:  ["en": "Paying users", "de": "Zahlende Benutzer:innen"],
         .anIap:          ["en": "In-app purchases", "de": "In-App-Käufe"],
@@ -1268,5 +1299,99 @@ enum Strings {
                           "de": "ASC Remote ist eine private, nicht-kommerzielle Begleit-App zu ASC Manager. Sie steht in keiner Verbindung zu Apple und wird nicht von Apple unterstützt. Sie liest ausschließlich Daten, die du von deinem eigenen Mac über deine private iCloud-Datenbank spiegelst, und greift nie direkt auf App Store Connect zu."],
         .rmAppInfoNote:  ["en": "Read-only mirror. No App Store Connect credentials are stored on this device.",
                           "de": "Schreibgeschützte Spiegelung. Auf diesem Gerät werden keine App-Store-Connect-Zugangsdaten gespeichert."],
+
+        // Market (Milestone 2)
+        .grpMarket:       ["en": "Market", "de": "Markt"],
+        .secMarketCharts: ["en": "Top Charts", "de": "Top-Charts"],
+        .secMarketSearch: ["en": "App Search", "de": "App-Suche"],
+        .secMarketSDKs:   ["en": "SDK Radar", "de": "SDK-Radar"],
+        .mktChartsBody:   ["en": "Public App Store charts from Apple Marketing Tools. No revenue estimates for third-party apps.",
+                           "de": "Öffentliche App-Store-Charts von Apple Marketing Tools. Keine Umsatzschätzungen für fremde Apps."],
+        .mktSearchBody:   ["en": "Search the public App Store via the iTunes Lookup API — metadata, ratings, and screenshots.",
+                           "de": "Durchsuche den öffentlichen App Store über die iTunes-Lookup-API — Metadaten, Bewertungen und Screenshots."],
+        .mktSDKsBody:     ["en": "Lightweight overview of well-known SDKs matched against current chart apps. Not Appfigures-level intelligence.",
+                           "de": "Leichter Überblick über bekannte SDKs, abgeglichen mit aktuellen Chart-Apps. Kein Appfigures-Niveau."],
+        .mktCountry:      ["en": "Country", "de": "Land"],
+        .mktRefresh:      ["en": "Refresh", "de": "Aktualisieren"],
+        .mktLoading:      ["en": "Loading…", "de": "Lade…"],
+        .mktError:         ["en": "Could not load market data.", "de": "Marktdaten konnten nicht geladen werden."],
+        .mktChartFree:     ["en": "Top Free", "de": "Top Kostenlos"],
+        .mktChartPaid:     ["en": "Top Paid", "de": "Top Bezahlt"],
+        .mktChartGrossing: ["en": "Top Grossing", "de": "Top Umsatz"],
+        .mktChartApps:     ["en": "Apps", "de": "Apps"],
+        .mktChartGames:    ["en": "Games", "de": "Spiele"],
+        .mktBookmark:      ["en": "Bookmark", "de": "Lesezeichen"],
+        .mktBookmarked:    ["en": "Bookmarked", "de": "Gespeichert"],
+        .mktRankFmt:       ["en": "#%d", "de": "#%d"],
+        .mktSearchPlaceholder: ["en": "App name or bundle ID", "de": "App-Name oder Bundle-ID"],
+        .mktNoResults:     ["en": "No apps found", "de": "Keine Apps gefunden"],
+        .mktScreenshots:   ["en": "Screenshots", "de": "Screenshots"],
+        .mktDescription:   ["en": "Description", "de": "Beschreibung"],
+        .mktRatingFmt:     ["en": "%.1f ★ (%d)", "de": "%.1f ★ (%d)"],
+        .mktMarketIndexTitle: ["en": "Market momentum", "de": "Marktimpuls"],
+        .mktMarketIndexUp:   ["en": "Market ↑", "de": "Markt ↑"],
+        .mktMarketIndexDown: ["en": "Market ↓", "de": "Markt ↓"],
+        .mktMarketIndexFlat: ["en": "Market →", "de": "Markt →"],
+        .mktMarketIndexFmt:  ["en": "%@ vs. last snapshot (%d up, %d down, %d new)",
+                              "de": "%@ vs. letzter Snapshot (%d ↑, %d ↓, %d neu)"],
+        .mktRankDeltaFmt:    ["en": "Rank %+d", "de": "Rang %+d"],
+        .mktSDKDisclaimer:   ["en": "Keyword heuristics only — not a full SDK intelligence scan.",
+                              "de": "Nur Stichwort-Heuristik — kein vollständiger SDK-Scan."],
+        .mktSDKMatches:      ["en": "Chart matches", "de": "Chart-Treffer"],
+        .mktCompareOwnApps:  ["en": "Your apps in chart", "de": "Deine Apps im Chart"],
+        .mktNotInChart:      ["en": "Not in current top 25", "de": "Nicht in den Top 25"],
+        .mktOpenStore:       ["en": "Open in App Store", "de": "Im App Store öffnen"],
+
+        .exportCSV:          ["en": "Export CSV", "de": "CSV exportieren"],
+        .exportJSON:         ["en": "Export JSON", "de": "JSON exportieren"],
+        .exportSavedFmt:     ["en": "Exported to %@", "de": "Exportiert nach %@"],
+
+        .obReportsTitle:     ["en": "Import sales reports", "de": "Verkaufsberichte importieren"],
+        .obReportsBody:      ["en": "Analytics works best with locally stored Sales Summary reports. Enter your vendor number in Settings → Reports, download daily reports, and ASC Manager will build exact download and revenue trends — no estimates.",
+                              "de": "Analysen funktionieren am besten mit lokal gespeicherten Sales-Summary-Berichten. Trage deine Anbieternummer unter Einstellungen → Berichte ein, lade tägliche Berichte herunter, und ASC Manager erstellt exakte Download- und Umsatztrends — ohne Schätzungen."],
+        .obReportsVendorHint:["en": "Vendor number: App Store Connect → Payments and Financial Reports",
+                              "de": "Anbieternummer: App Store Connect → Zahlungen und Finanzberichte"],
+        .obReportsFolderHint:["en": "Reports are saved to a folder you choose in Settings. The app scans it automatically.",
+                              "de": "Berichte werden in einem von dir gewählten Ordner gespeichert. Die App scannt ihn automatisch."],
+
+        .rvTable:            ["en": "Table", "de": "Tabelle"],
+        .rvSearch:           ["en": "Search reviews", "de": "Bewertungen durchsuchen"],
+        .rvDate:             ["en": "Date", "de": "Datum"],
+        .rvTitle:            ["en": "Title", "de": "Titel"],
+        .rvBodyCol:          ["en": "Review", "de": "Text"],
+        .rvResponded:        ["en": "Responded", "de": "Beantwortet"],
+        .rvNotResponded:     ["en": "Open", "de": "Offen"],
+        .rvRatingsSummary:   ["en": "Ratings summary", "de": "Bewertungsübersicht"],
+        .rvAvgRating:        ["en": "Average", "de": "Durchschnitt"],
+        .rvTotalRatings:     ["en": "Total ratings", "de": "Bewertungen gesamt"],
+
+        .secPayments:        ["en": "Payments", "de": "Zahlungen"],
+        .payBody:            ["en": "Expected payouts from imported sales reports aligned with Apple's fiscal calendar. Incomplete periods may still be missing daily report files.",
+                               "de": "Erwartete Auszahlungen aus importierten Verkaufsberichten nach Apple-Fiskalkalender. Unvollständige Perioden können noch fehlende Tagesberichte haben."],
+        .payNoDataTitle:     ["en": "No sales data", "de": "Keine Verkaufsdaten"],
+        .payNoDataBody:      ["en": "Import daily Sales Summary reports in Reports to track proceeds per payout period.",
+                               "de": "Importiere tägliche Sales-Summary-Berichte unter Berichte, um Erlöse pro Auszahlungsperiode zu verfolgen."],
+        .payFiscalCalendar:  ["en": "Fiscal calendar", "de": "Fiskalkalender"],
+        .payCurrentPeriod:   ["en": "Current period", "de": "Aktuelle Periode"],
+        .payHistory:         ["en": "Payout history", "de": "Auszahlungsverlauf"],
+        .payPeriod:          ["en": "Period", "de": "Periode"],
+        .payPaymentDate:     ["en": "Payment date", "de": "Zahlungsdatum"],
+        .payProceeds:        ["en": "Proceeds", "de": "Erlöse"],
+        .payStatus:          ["en": "Status", "de": "Status"],
+        .payStatusUpcoming:  ["en": "Upcoming", "de": "Bevorstehend"],
+        .payStatusPaid:      ["en": "Complete", "de": "Vollständig"],
+        .payStatusIncomplete:["en": "Incomplete", "de": "Unvollständig"],
+        .payIncompleteHint:  ["en": "Some periods are missing daily sales reports — proceeds may still change.",
+                               "de": "Einige Perioden haben noch nicht alle Tagesberichte — Erlöse können sich noch ändern."],
+
+        .tlExport:           ["en": "Export", "de": "Export"],
+        .tlExportBody:       ["en": "Export stored metrics and chart history, or enable a local HTTP API for scripts.",
+                               "de": "Gespeicherte Metriken und Chart-Verlauf exportieren oder lokale HTTP-API für Skripte aktivieren."],
+        .tlExportMetricsCSV: ["en": "Metrics CSV", "de": "Metriken CSV"],
+        .tlExportMetricsJSON:["en": "Metrics JSON", "de": "Metriken JSON"],
+        .tlExportCharts:     ["en": "Chart history JSON", "de": "Chart-Verlauf JSON"],
+        .tlLocalAPI:         ["en": "Local metrics API", "de": "Lokale Metriken-API"],
+        .tlLocalAPIHint:     ["en": "http://localhost:%@/metrics — GET /health, /metrics, /metrics/{appId}",
+                               "de": "http://localhost:%@/metrics — GET /health, /metrics, /metrics/{appId}"],
     ]
 }

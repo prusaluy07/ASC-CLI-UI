@@ -1,4 +1,6 @@
 import SwiftUI
+import AppKit
+import UniformTypeIdentifiers
 import ASCShared
 
 // MARK: - Team & Devices
@@ -102,6 +104,9 @@ struct TeamView: View {
 struct ToolsView: View {
     @EnvironmentObject var ascService: ASCService
     @EnvironmentObject var loc: LocalizationManager
+    @EnvironmentObject var metricsEngine: MetricsEngine
+    @EnvironmentObject var marketEngine: MarketEngine
+    @EnvironmentObject var localAPI: LocalAPIServer
     let selectedApp: ASCApp?
 
     @State private var tab = 0
@@ -115,6 +120,7 @@ struct ToolsView: View {
                 Text(loc(.tlAccount)).tag(0)
                 Text(loc(.tlWebhooks)).tag(1)
                 Text(loc(.tlFastlane)).tag(2)
+                Text(loc(.tlExport)).tag(3)
             }
             .pickerStyle(.segmented)
             .labelsHidden()
@@ -122,6 +128,7 @@ struct ToolsView: View {
             switch tab {
             case 1: webhooksPane(run, isRunning)
             case 2: fastlanePane(run, isRunning)
+            case 3: exportPane()
             default:
                 actionBox(isRunning) {
                     Button { run { await ascService.accountStatus(appId: selectedApp?.id) } } label: {
@@ -185,5 +192,67 @@ struct ToolsView: View {
                 }
             }.padding(6)
         }
+    }
+
+    private func exportPane() -> some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(loc(.tlExportBody)).font(.caption).foregroundStyle(.secondary)
+
+                FlowButtons {
+                    Button { exportMetrics(.csv) } label: {
+                        Label(loc(.tlExportMetricsCSV), systemImage: "chart.line.uptrend.xyaxis")
+                    }.disabled(selectedApp == nil)
+                    Button { exportMetrics(.json) } label: {
+                        Label(loc(.tlExportMetricsJSON), systemImage: "curlybraces")
+                    }.disabled(selectedApp == nil)
+                    Button { exportCharts() } label: {
+                        Label(loc(.tlExportCharts), systemImage: "chart.bar")
+                    }
+                }
+
+                Divider()
+
+                Toggle(isOn: Binding(
+                    get: { localAPI.isRunning },
+                    set: { $0 ? localAPI.start() : localAPI.stop() }
+                )) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(loc(.tlLocalAPI))
+                        Text(loc(.tlLocalAPIHint, localAPI.port))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .toggleStyle(.switch)
+
+                if let err = localAPI.lastError {
+                    Text(err).font(.caption).foregroundStyle(.red)
+                }
+            }
+            .padding(6)
+        }
+    }
+
+    private enum MetricsExport { case csv, json }
+
+    private func exportMetrics(_ format: MetricsExport) {
+        guard let app = selectedApp else { return }
+        let text = format == .csv ? metricsEngine.exportCSV(for: app) : metricsEngine.exportJSON(for: app)
+        saveExport(text: text, name: "\(app.name)-metrics", format: format == .csv ? "csv" : "json",
+                   contentType: format == .csv ? .commaSeparatedText : .json)
+    }
+
+    private func exportCharts() {
+        let text = marketEngine.history.exportJSON()
+        saveExport(text: text, name: "chart-history", format: "json", contentType: .json)
+    }
+
+    private func saveExport(text: String, name: String, format: String, contentType: UTType) {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [contentType]
+        panel.nameFieldStringValue = "\(name).\(format)"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        try? text.write(to: url, atomically: true, encoding: .utf8)
     }
 }

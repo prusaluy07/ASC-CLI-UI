@@ -27,6 +27,10 @@ public enum MirrorSection: String, CaseIterable, Identifiable, Codable, Sendable
     case inAppPurchases
     /// Weekly analytics insights (`asc insights weekly --source analytics`).
     case analytics
+    /// Locally stored sales-report aggregates (7-day summary + trend).
+    case storedMetrics
+    /// Public App Store chart rank for the mirrored app (from cached chart feed).
+    case marketRank
 
     public var id: String { rawValue }
 
@@ -42,6 +46,8 @@ public enum MirrorSection: String, CaseIterable, Identifiable, Codable, Sendable
         case .subscriptions:   return .secSubscriptions
         case .inAppPurchases:  return .secIAP
         case .analytics:       return .secAnalytics
+        case .storedMetrics:   return .secAnalytics
+        case .marketRank:      return .secMarketCharts
         }
     }
 }
@@ -150,6 +156,8 @@ public enum RemoteMirror {
         case .inAppPurchases:  return collectionSummary(root)
         case .reviews:         return reviewsSummary(root)
         case .analytics:       return analyticsSummary(root)
+        case .storedMetrics:   return storedMetricsSummary(root)
+        case .marketRank:      return marketRankSummary(root)
         }
     }
 
@@ -199,9 +207,6 @@ public enum RemoteMirror {
         ["count": String(items(root).count)]
     }
 
-    /// Headline values for a weekly analytics insights payload: the reported week range,
-    /// the source name, and how many metrics actually carry a value vs. are unavailable
-    /// (so the consumer can hint at API-key analytics restrictions at a glance).
     private static func analyticsSummary(_ root: JSONValue) -> [String: String] {
         var s: [String: String] = [:]
         if let start = root["week"]?["start"]?.stringValue { s["weekStart"] = start }
@@ -212,6 +217,24 @@ public enum RemoteMirror {
             s["metrics"] = String(metrics.count)
             s["available"] = String(available)
         }
+        return s
+    }
+
+    private static func storedMetricsSummary(_ root: JSONValue) -> [String: String] {
+        var s: [String: String] = [:]
+        if let d = root["downloads"]?.stringValue { s["downloads"] = d }
+        if let p = root["proceeds"]?.stringValue { s["proceeds"] = p }
+        if let r = root["returns"]?.stringValue { s["returns"] = r }
+        if let days = root["days"]?.stringValue { s["days"] = days }
+        return s
+    }
+
+    private static func marketRankSummary(_ root: JSONValue) -> [String: String] {
+        var s: [String: String] = [:]
+        if let rank = root["rank"]?.stringValue { s["rank"] = rank }
+        if let chart = root["chart"]?.stringValue { s["chart"] = chart }
+        if let country = root["country"]?.stringValue { s["country"] = country }
+        if let delta = root["delta"]?.stringValue { s["delta"] = delta }
         return s
     }
 

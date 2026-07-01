@@ -35,7 +35,7 @@ final class SalesReportTests: XCTestCase {
         XCTAssertEqual(result.rows.count, 5)
         XCTAssertEqual(result.rows.first?.sku, "com.example.app")
         XCTAssertEqual(result.rows.first?.units, 10)
-        XCTAssertEqual(result.rows.first?.proceeds, 29.9, accuracy: 0.01)
+        XCTAssertEqual(result.rows.first?.proceeds ?? 0, 29.9, accuracy: 0.01)
     }
 
     func testClassifiesProductTypes() {
