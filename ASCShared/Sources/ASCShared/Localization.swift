@@ -258,7 +258,7 @@ public enum LocKey: String {
     case anAllMetrics, anAnalyticsRestricted, anStatusUnavailable
     case anNeedRequest
     case anReportTitle, anReportBody, anReportLoad, anReportCreate
-    case anReportProcessing, anReportForbidden, anReportCreated, anReportLoadedFmt
+    case anReportProcessing, anReportForbidden, anReportCreated, anReportLoadedFmt, anReportWeekFallbackFmt
     case anAdminRequiredTitle, anAdminRequiredBody, anAnalyticsUsingProfileFmt, anOpenProfileSettings
 
     // Local metrics store (Milestone 1)
@@ -1222,6 +1222,8 @@ enum Strings {
         .anReportCreated: ["en": "Requested. Apple prepares the reports over roughly the next 1–2 days.",
                            "de": "Angefordert. Apple bereitet die Berichte über etwa 1–2 Tage auf."],
         .anReportLoadedFmt: ["en": "Loaded %d rows from report \"%@\".", "de": "%d Zeilen aus Bericht „%@“ geladen."],
+        .anReportWeekFallbackFmt: ["en": "No instances for the selected week yet — showing the newest available report (%@).",
+                                   "de": "Für die gewählte Woche gibt es noch keine Instanzen — angezeigt wird der neueste verfügbare Bericht (%@)."],
         .anAnalyticsRestricted: ["en": "This API key can't read App Analytics reports, so acquisition metrics (impressions, page views, conversion) are unavailable — this is an Apple API restriction, not a bug. Downloads, revenue and subscriptions come from the Sales reports: set a vendor number under Reports. For analytics access, use a key with Admin/Account Holder role and enabled App Analytics reporting.",
                                  "de": "Dieser API-Key darf keine App-Analytics-Berichte lesen, daher sind Akquise-Kennzahlen (Impressionen, Seitenaufrufe, Konversion) nicht verfügbar — das ist eine Apple-API-Beschränkung, kein Fehler. Downloads, Umsatz und Abos stammen aus den Sales-Berichten: hinterlege dazu eine Anbieternummer unter „Berichte“. Für Analytics-Zugriff brauchst du einen Key mit Rolle Admin/Account Holder und aktivierter App-Analytics-Berichterstattung."],
         .anAdminRequiredTitle: ["en": "Admin API key required for analytics",

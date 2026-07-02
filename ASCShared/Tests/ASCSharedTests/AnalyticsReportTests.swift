@@ -120,4 +120,51 @@ final class AnalyticsReportTests: XCTestCase {
         XCTAssertTrue(AnalyticsReportLocator.instances(fromViewJSON: "not json").isEmpty)
         XCTAssertTrue(AnalyticsReportLocator.instances(fromViewJSON: "{}").isEmpty)
     }
+
+    // MARK: Week selection
+
+    private func inst(_ id: String, _ date: String?) -> AnalyticsInstanceRef {
+        AnalyticsInstanceRef(instanceId: id, processingDate: date)
+    }
+
+    func testSelectKeepsOnlyInstancesInsideWeek() {
+        let all = [inst("a", "2026-07-01"), inst("b", "2026-06-30"), inst("c", "2026-06-28")]
+        let sel = AnalyticsReportLocator.select(all, weekStarting: "2026-06-29")
+        XCTAssertFalse(sel.isFallback)
+        XCTAssertEqual(sel.instances.map(\.instanceId), ["a", "b"])
+    }
+
+    func testSelectWeekSpansMonthBoundary() {
+        // Week of 2026-06-29 runs through 2026-07-05.
+        let sel = AnalyticsReportLocator.select([inst("jul", "2026-07-05")], weekStarting: "2026-06-29")
+        XCTAssertFalse(sel.isFallback)
+        XCTAssertEqual(sel.instances.map(\.instanceId), ["jul"])
+    }
+
+    func testSelectFallsBackToNewestWhenWeekHasNoInstances() {
+        let all = [inst("new", "2026-06-27"), inst("old", "2026-06-20")]
+        let sel = AnalyticsReportLocator.select(all, weekStarting: "2026-06-29")
+        XCTAssertTrue(sel.isFallback)
+        XCTAssertEqual(sel.instances.first?.instanceId, "new")
+    }
+
+    func testSelectExcludesUndatedInstancesFromWeekMatch() {
+        let all = [inst("dated", "2026-06-30"), inst("undated", nil)]
+        let sel = AnalyticsReportLocator.select(all, weekStarting: "2026-06-29")
+        XCTAssertFalse(sel.isFallback)
+        XCTAssertEqual(sel.instances.map(\.instanceId), ["dated"])
+    }
+
+    func testSelectEmptyInputIsEmptyAndNotFallback() {
+        let sel = AnalyticsReportLocator.select([], weekStarting: "2026-06-29")
+        XCTAssertTrue(sel.instances.isEmpty)
+        XCTAssertFalse(sel.isFallback)
+    }
+
+    func testSelectUnparseableWeekLeavesListUnfiltered() {
+        let all = [inst("a", "2026-06-30")]
+        let sel = AnalyticsReportLocator.select(all, weekStarting: "garbage")
+        XCTAssertFalse(sel.isFallback)
+        XCTAssertEqual(sel.instances.count, 1)
+    }
 }
