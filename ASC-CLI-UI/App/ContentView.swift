@@ -208,6 +208,12 @@ struct ContentView: View {
             ToolbarItem(placement: .navigation) {
                 if ascService.isLoading {
                     ProgressView().controlSize(.small)
+                } else if let notice = ascService.truncationNotice {
+                    // The last list response was cut off by its --limit.
+                    Label(notice, systemImage: "exclamationmark.triangle")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .help(notice)
                 }
             }
             ToolbarItemGroup(placement: .primaryAction) {
