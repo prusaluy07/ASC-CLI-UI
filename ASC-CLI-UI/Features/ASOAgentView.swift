@@ -39,6 +39,15 @@ struct ASOAgentView: View {
     @State private var isApplying = false
     @State private var reportMessage: String?
 
+    // Tracking agent (plan → paste into Appfigures → verify via API)
+    @State private var trackingPlan: KeywordTrackingPlan?
+    @State private var trackingSelection: Set<String> = []
+    @State private var resolvedProductId: Int64?
+    @State private var isVerifying = false
+    @State private var verifySummary: String?
+    @State private var verifiedTerms: Set<String> = []
+    @State private var missingTerms: Set<String> = []
+
     private var isRunning: Bool { runTask != nil }
 
     var body: some View {
@@ -74,6 +83,7 @@ struct ASOAgentView: View {
                 if let proposal {
                     resultsCard(proposal)
                 }
+                trackingCard
             }
             .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -449,6 +459,127 @@ struct ASOAgentView: View {
         value.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(value)) : String(value)
     }
 
+    // MARK: - Tracking agent
+
+    private var trackingCard: some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(loc(.trkBody)).font(.callout).foregroundStyle(.secondary)
+                if let plan = trackingPlan {
+                    trackingContent(plan)
+                } else {
+                    Text(loc(.trkNeedRun)).font(.callout).foregroundStyle(.tertiary)
+                }
+            }
+            .padding(6)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } label: {
+            Label(loc(.trkTitle), systemImage: "plus.magnifyingglass")
+        }
+    }
+
+    @ViewBuilder
+    private func trackingContent(_ plan: KeywordTrackingPlan) -> some View {
+        if plan.suggestions.isEmpty {
+            Text(loc(.trkNoSuggestions)).font(.callout).foregroundStyle(.secondary)
+        } else {
+            HStack(spacing: 12) {
+                Text(loc(.trkSuggestionsFmt, plan.suggestions.count))
+                    .font(.caption.weight(.semibold))
+                if !plan.alreadyTracked.isEmpty {
+                    Text(loc(.trkAlreadyFmt, plan.alreadyTracked.count))
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button(loc(.trkSelectAll)) { trackingSelection = Set(plan.suggestions) }
+                    .buttonStyle(.link).font(.caption)
+                Button(loc(.trkSelectNone)) { trackingSelection = [] }
+                    .buttonStyle(.link).font(.caption)
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(plan.suggestions, id: \.self) { term in
+                    HStack(spacing: 8) {
+                        Toggle(term, isOn: Binding(
+                            get: { trackingSelection.contains(term) },
+                            set: { on in
+                                if on { trackingSelection.insert(term) } else { trackingSelection.remove(term) }
+                            }
+                        ))
+                        .toggleStyle(.checkbox)
+                        if verifiedTerms.contains(term) {
+                            trackingBadge(loc(.trkTrackedBadge), color: .green)
+                        } else if missingTerms.contains(term) {
+                            trackingBadge(loc(.trkMissingBadge), color: .orange)
+                        }
+                        Spacer()
+                    }
+                }
+            }
+            HStack(spacing: 12) {
+                Button {
+                    copy(KeywordTrackingPlan.exportText(selectedTrackingTerms(plan)), id: "tracking")
+                } label: {
+                    Label(copiedField == "tracking" ? loc(.asoCopied) : loc(.trkCopyList),
+                          systemImage: "doc.on.doc")
+                }
+                .disabled(trackingSelection.isEmpty)
+                Button {
+                    NSWorkspace.shared.open(URL(string: "https://analytics.appfigures.com/reports/keyword-performance")!)
+                } label: {
+                    Label(loc(.trkOpenAppfigures), systemImage: "arrow.up.forward.app")
+                }
+                Button {
+                    verifyTracking(plan)
+                } label: {
+                    if isVerifying {
+                        HStack(spacing: 6) { ProgressView().controlSize(.small); Text(loc(.trkVerifying)) }
+                    } else {
+                        Label(loc(.trkVerify), systemImage: "checkmark.seal")
+                    }
+                }
+                .disabled(isVerifying || resolvedProductId == nil
+                          || apiKey.trimmingCharacters(in: .whitespaces).isEmpty)
+                if let verifySummary {
+                    Text(verifySummary).font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+        }
+    }
+
+    private func trackingBadge(_ text: String, color: Color) -> some View {
+        Text(text)
+            .font(.caption2.weight(.semibold))
+            .padding(.horizontal, 6).padding(.vertical, 1)
+            .background(color.opacity(0.15), in: Capsule())
+            .foregroundStyle(color)
+    }
+
+    /// Selected terms in plan order (a `Set` alone would scramble the ranking).
+    private func selectedTrackingTerms(_ plan: KeywordTrackingPlan) -> [String] {
+        plan.suggestions.filter { trackingSelection.contains($0) }
+    }
+
+    private func verifyTracking(_ plan: KeywordTrackingPlan) {
+        guard let productId = resolvedProductId else { return }
+        let client = AppfiguresClient(token: apiKey.trimmingCharacters(in: .whitespaces))
+        isVerifying = true
+        verifySummary = nil
+        Task { @MainActor in
+            do {
+                let tracked = try await client.keywords(productId: productId, country: country)
+                let result = KeywordTrackingPlan.verify(planned: selectedTrackingTerms(plan),
+                                                        tracked: tracked)
+                verifiedTerms = Set(result.tracked)
+                missingTerms = Set(result.missing)
+                verifySummary = loc(.trkVerifyResultFmt, result.tracked.count, result.missing.count)
+            } catch {
+                verifySummary = error.localizedDescription
+            }
+            isVerifying = false
+        }
+    }
+
     // MARK: - Pipeline
 
     private func startRun(app: ASCApp) {
@@ -456,6 +587,12 @@ struct ASOAgentView: View {
         proposal = nil
         applyResult = nil
         reportMessage = nil
+        trackingPlan = nil
+        trackingSelection = []
+        resolvedProductId = nil
+        verifySummary = nil
+        verifiedTerms = []
+        missingTerms = []
         let wantsAppfigures = useTracked && !apiKey.trimmingCharacters(in: .whitespaces).isEmpty
         steps = [
             AgentStep(key: .asoStepMetadata),
@@ -499,6 +636,7 @@ struct ASOAgentView: View {
                 }
             }
             if Task.isCancelled { return }
+            resolvedProductId = productId
             if let productId {
                 setStep(.asoStepProduct, .done(loc(.asoProductResolvedFmt, String(productId))))
                 setStep(.asoStepKeywords, .running)
@@ -543,7 +681,11 @@ struct ASOAgentView: View {
             languageCode: (selectedLocale ?? loc.code).hasPrefix("de") ? "de" : "en"
         )
         proposalInput = input
-        proposal = ASOAgentEngine.propose(input)
+        let result = ASOAgentEngine.propose(input)
+        proposal = result
+        let plan = KeywordTrackingPlan.build(input: input, candidates: result.candidates)
+        trackingPlan = plan
+        trackingSelection = Set(plan.suggestions)
         setStep(.asoStepCompose, .done(nil))
     }
 

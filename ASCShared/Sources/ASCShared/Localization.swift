@@ -343,6 +343,12 @@ public enum LocKey: String {
     case asoWarnOverLimitFmt, asoWarnReservedFmt, asoWarnBudgetFmt
     case asoSaveReport, asoReportSavedFmt, asoNoCandidates
     case asoSubtitleField, asoSubtitleFieldHint
+
+    // Keyword-tracking agent (plan → paste into Appfigures → verify)
+    case trkTitle, trkBody, trkSuggestionsFmt, trkAlreadyFmt
+    case trkCopyList, trkOpenAppfigures, trkVerify, trkVerifying
+    case trkVerifyResultFmt, trkNeedRun, trkNoSuggestions
+    case trkTrackedBadge, trkMissingBadge, trkSelectAll, trkSelectNone
 }
 
 // MARK: - Manager
@@ -1506,5 +1512,25 @@ enum Strings {
         .asoSubtitleField:   ["en": "App subtitle (optional)", "de": "App-Untertitel (optional)"],
         .asoSubtitleFieldHint: ["en": "Used to avoid wasting keyword characters on words Apple already indexes.",
                               "de": "Verhindert, dass Keyword-Zeichen für bereits indexierte Wörter verschwendet werden."],
+
+        // Keyword-tracking agent
+        .trkTitle:           ["en": "Tracking agent", "de": "Tracking-Agent"],
+        .trkBody:            ["en": "The Appfigures API can't create tracked keywords, so this agent plans the list, copies it for the bulk-add box in Appfigures, and then verifies via the API which terms are actually tracked.",
+                              "de": "Die Appfigures-API kann keine Keywords anlegen. Dieser Agent plant daher die Liste, kopiert sie für die Sammeleingabe in Appfigures und prüft anschließend über die API, welche Begriffe wirklich getrackt werden."],
+        .trkSuggestionsFmt:  ["en": "%d terms to track", "de": "%d Begriffe zum Tracken"],
+        .trkAlreadyFmt:      ["en": "%d already tracked", "de": "%d bereits getrackt"],
+        .trkCopyList:        ["en": "Copy list", "de": "Liste kopieren"],
+        .trkOpenAppfigures:  ["en": "Open Appfigures", "de": "Appfigures öffnen"],
+        .trkVerify:          ["en": "Verify tracking", "de": "Tracking prüfen"],
+        .trkVerifying:       ["en": "Checking…", "de": "Prüfe…"],
+        .trkVerifyResultFmt: ["en": "%d tracked · %d missing", "de": "%d getrackt · %d fehlen"],
+        .trkNeedRun:         ["en": "Run the agent above first to plan tracking terms.",
+                              "de": "Zuerst den Agenten oben ausführen, um Tracking-Begriffe zu planen."],
+        .trkNoSuggestions:   ["en": "Everything worth tracking is already tracked.",
+                              "de": "Alles Relevante wird bereits getrackt."],
+        .trkTrackedBadge:    ["en": "Tracked", "de": "Getrackt"],
+        .trkMissingBadge:    ["en": "Missing", "de": "Fehlt"],
+        .trkSelectAll:       ["en": "Select all", "de": "Alle auswählen"],
+        .trkSelectNone:      ["en": "Select none", "de": "Keine auswählen"],
     ]
 }

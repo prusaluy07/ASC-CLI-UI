@@ -51,7 +51,10 @@ The sidebar is grouped into **App**, **Builds**, **Release**, and **Developer**.
 - **ASO Agent** – one-click keyword optimization: combines the current metadata (via `asc`),
   Appfigures keyword research (personal access token, stored in the keychain), and customer
   reviews into an optimized ≤100-char keyword field, title/subtitle ideas, and findings —
-  apply the keywords back via `asc` or export a markdown research report.
+  apply the keywords back via `asc` or export a markdown research report. A companion
+  **tracking agent** plans which search phrases to track in Appfigures (the public API is
+  read-only for keywords), exports the list for Appfigures' bulk-add box, and verifies via
+  the API which terms are actually tracked.
 - **Media** – list, upload, and download App Store **screenshots** and **app preview videos**
   per device type and locale.
 
