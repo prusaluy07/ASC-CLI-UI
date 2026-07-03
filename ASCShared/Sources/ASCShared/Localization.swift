@@ -325,6 +325,24 @@ public enum LocKey: String {
     case rmCompatMacApp, rmSourceCode, rmImpressum, rmImpressumBody, rmAppInfoNote
     case rmLatestVersion, rmLatestBuild, rmRating, rmRank, rmDownloads, rmDownloads7d, rmProceeds7d
     case rmWeekCompare, rmRatingsCountFmt, rmInternalGroup
+
+    // ASO agent (Appfigures-assisted metadata optimization)
+    case secASOAgent, asoTitle, asoBody
+    case asoConfigTitle, asoApiKey, asoApiKeyHint, asoGetKey, asoCountry, asoCountryHint
+    case asoProductId, asoProductIdHint, asoSeeds, asoSeedsHint
+    case asoUseTracked, asoMineReviews
+    case asoStart, asoCancelRun, asoNeedKeyOrSeeds
+    case asoStepMetadata, asoStepProduct, asoStepKeywords, asoStepReviews, asoStepCompose
+    case asoSkipped, asoProductResolvedFmt, asoProductNotFound, asoKeywordCountFmt, asoReviewCountFmt
+    case asoResults, asoProposedKeywords, asoCharsFmt, asoCopy, asoCopied
+    case asoApply, asoApplyConfirmTitle, asoApplyConfirmMsg, asoApplied
+    case asoTitleIdeas, asoSubtitleIdeas, asoWarningsTitle, asoCandidates
+    case asoColTerm, asoColScore, asoColPop, asoColComp, asoColRank, asoColSources, asoCoveredBadge
+    case asoSrcTracked, asoSrcSeed, asoSrcCurrent, asoSrcReviews
+    case asoWarnSpacesFmt, asoWarnDupsFmt, asoWarnTitleDupsFmt
+    case asoWarnOverLimitFmt, asoWarnReservedFmt, asoWarnBudgetFmt
+    case asoSaveReport, asoReportSavedFmt, asoNoCandidates
+    case asoSubtitleField, asoSubtitleFieldHint
 }
 
 // MARK: - Manager
@@ -1407,5 +1425,86 @@ enum Strings {
         .tlLocalAPI:         ["en": "Local metrics API", "de": "Lokale Metriken-API"],
         .tlLocalAPIHint:     ["en": "http://localhost:%@/metrics — GET /health, /metrics, /metrics/{appId}",
                                "de": "http://localhost:%@/metrics — GET /health, /metrics, /metrics/{appId}"],
+
+        // ASO agent
+        .secASOAgent:        ["en": "ASO Agent", "de": "ASO-Agent"],
+        .asoTitle:           ["en": "ASO Agent", "de": "ASO-Agent"],
+        .asoBody:            ["en": "Combines your current App Store metadata, Appfigures keyword research, and customer reviews into an optimized keyword field plus title and subtitle ideas.",
+                              "de": "Kombiniert deine aktuellen App-Store-Metadaten, Appfigures-Keyword-Recherche und Kundenbewertungen zu einem optimierten Keyword-Feld sowie Titel- und Untertitel-Ideen."],
+        .asoConfigTitle:     ["en": "Inputs", "de": "Eingaben"],
+        .asoApiKey:          ["en": "Appfigures API key", "de": "Appfigures-API-Schlüssel"],
+        .asoApiKeyHint:      ["en": "Personal access token — stored in your macOS keychain.",
+                              "de": "Personal Access Token — wird im macOS-Schlüsselbund gespeichert."],
+        .asoGetKey:          ["en": "Create a token at appfigures.com → API", "de": "Token erstellen unter appfigures.com → API"],
+        .asoCountry:         ["en": "Country", "de": "Land"],
+        .asoCountryHint:     ["en": "ISO code for keyword ranks, e.g. DE or US.",
+                              "de": "ISO-Code für Keyword-Ränge, z. B. DE oder US."],
+        .asoProductId:       ["en": "Appfigures product ID (optional)", "de": "Appfigures-Produkt-ID (optional)"],
+        .asoProductIdHint:   ["en": "Leave empty to resolve automatically from the App Store ID.",
+                              "de": "Leer lassen, um sie automatisch über die App-Store-ID zu ermitteln."],
+        .asoSeeds:           ["en": "Seed keywords", "de": "Eigene Keyword-Ideen"],
+        .asoSeedsHint:       ["en": "Comma-separated ideas to consider in addition to the research data.",
+                              "de": "Kommagetrennte Ideen, die zusätzlich zur Recherche berücksichtigt werden."],
+        .asoUseTracked:      ["en": "Use tracked Appfigures keywords", "de": "Getrackte Appfigures-Keywords verwenden"],
+        .asoMineReviews:     ["en": "Mine customer reviews for wording", "de": "Kundenbewertungen nach Formulierungen durchsuchen"],
+        .asoStart:           ["en": "Run agent", "de": "Agent starten"],
+        .asoCancelRun:       ["en": "Cancel", "de": "Abbrechen"],
+        .asoNeedKeyOrSeeds:  ["en": "Add an Appfigures API key or seed keywords first.",
+                              "de": "Zuerst einen Appfigures-API-Schlüssel oder eigene Keywords angeben."],
+        .asoStepMetadata:    ["en": "Load current metadata (asc)", "de": "Aktuelle Metadaten laden (asc)"],
+        .asoStepProduct:     ["en": "Resolve Appfigures product", "de": "Appfigures-Produkt ermitteln"],
+        .asoStepKeywords:    ["en": "Fetch keyword ranks", "de": "Keyword-Ränge abrufen"],
+        .asoStepReviews:     ["en": "Fetch customer reviews (asc)", "de": "Kundenbewertungen laden (asc)"],
+        .asoStepCompose:     ["en": "Compose proposal", "de": "Vorschlag erstellen"],
+        .asoSkipped:         ["en": "Skipped", "de": "Übersprungen"],
+        .asoProductResolvedFmt: ["en": "Product #%@", "de": "Produkt #%@"],
+        .asoProductNotFound: ["en": "App not found in this Appfigures account — set the product ID manually.",
+                              "de": "App in diesem Appfigures-Konto nicht gefunden — Produkt-ID manuell angeben."],
+        .asoKeywordCountFmt: ["en": "%d keywords", "de": "%d Keywords"],
+        .asoReviewCountFmt:  ["en": "%d reviews", "de": "%d Bewertungen"],
+        .asoResults:         ["en": "Proposal", "de": "Vorschlag"],
+        .asoProposedKeywords:["en": "Optimized keyword field", "de": "Optimiertes Keyword-Feld"],
+        .asoCharsFmt:        ["en": "%d/%d characters", "de": "%d/%d Zeichen"],
+        .asoCopy:            ["en": "Copy", "de": "Kopieren"],
+        .asoCopied:          ["en": "Copied", "de": "Kopiert"],
+        .asoApply:           ["en": "Apply keywords via asc", "de": "Keywords über asc übernehmen"],
+        .asoApplyConfirmTitle: ["en": "Apply keywords?", "de": "Keywords übernehmen?"],
+        .asoApplyConfirmMsg: ["en": "This updates the keyword field of the selected version/locale in App Store Connect.",
+                              "de": "Aktualisiert das Keyword-Feld der gewählten Version/Sprache in App Store Connect."],
+        .asoApplied:         ["en": "Keywords updated.", "de": "Keywords aktualisiert."],
+        .asoTitleIdeas:      ["en": "Title ideas", "de": "Titel-Ideen"],
+        .asoSubtitleIdeas:   ["en": "Subtitle ideas", "de": "Untertitel-Ideen"],
+        .asoWarningsTitle:   ["en": "Findings", "de": "Hinweise"],
+        .asoCandidates:      ["en": "Keyword candidates", "de": "Keyword-Kandidaten"],
+        .asoColTerm:         ["en": "Term", "de": "Begriff"],
+        .asoColScore:        ["en": "Score", "de": "Score"],
+        .asoColPop:          ["en": "Popularity", "de": "Popularität"],
+        .asoColComp:         ["en": "Competition", "de": "Wettbewerb"],
+        .asoColRank:         ["en": "Rank", "de": "Rang"],
+        .asoColSources:      ["en": "Sources", "de": "Quellen"],
+        .asoCoveredBadge:    ["en": "In name/subtitle", "de": "In Name/Untertitel"],
+        .asoSrcTracked:      ["en": "Appfigures", "de": "Appfigures"],
+        .asoSrcSeed:         ["en": "Seed", "de": "Eigene"],
+        .asoSrcCurrent:      ["en": "Current", "de": "Aktuell"],
+        .asoSrcReviews:      ["en": "Reviews", "de": "Bewertungen"],
+        .asoWarnSpacesFmt:   ["en": "%d space(s) after commas waste characters.",
+                              "de": "%d Leerzeichen nach Kommas verschwenden Zeichen."],
+        .asoWarnDupsFmt:     ["en": "Duplicated words in keywords: %@",
+                              "de": "Doppelte Wörter im Keyword-Feld: %@"],
+        .asoWarnTitleDupsFmt:["en": "Already covered by name/subtitle: %@",
+                              "de": "Bereits durch Name/Untertitel abgedeckt: %@"],
+        .asoWarnOverLimitFmt:["en": "Keyword field has %d characters — limit is %d.",
+                              "de": "Keyword-Feld hat %d Zeichen — Limit ist %d."],
+        .asoWarnReservedFmt: ["en": "Words Apple ignores in keywords: %@",
+                              "de": "Wörter, die Apple im Keyword-Feld ignoriert: %@"],
+        .asoWarnBudgetFmt:   ["en": "%d characters unused — add more research terms or seeds.",
+                              "de": "%d Zeichen ungenutzt — weitere Recherche-Begriffe oder Ideen ergänzen."],
+        .asoSaveReport:      ["en": "Save research report…", "de": "Recherche-Bericht sichern…"],
+        .asoReportSavedFmt:  ["en": "Report saved: %@", "de": "Bericht gesichert: %@"],
+        .asoNoCandidates:    ["en": "No keyword candidates yet — add seeds or connect Appfigures.",
+                              "de": "Noch keine Keyword-Kandidaten — eigene Ideen ergänzen oder Appfigures verbinden."],
+        .asoSubtitleField:   ["en": "App subtitle (optional)", "de": "App-Untertitel (optional)"],
+        .asoSubtitleFieldHint: ["en": "Used to avoid wasting keyword characters on words Apple already indexes.",
+                              "de": "Verhindert, dass Keyword-Zeichen für bereits indexierte Wörter verschwendet werden."],
     ]
 }
