@@ -163,8 +163,10 @@ public enum ASOAgentEngine {
         }
         for (term, count) in input.competitorTerms.sorted(by: { $0.key < $1.key }) {
             let key = slot(term)
-            acc[key]?.sources.insert(.competitor)
-            acc[key]?.competitorHits = max(acc[key]?.competitorHits ?? 0, count)
+            var entry = acc[key] ?? Accumulator()
+            entry.sources.insert(.competitor)
+            entry.competitorHits = max(entry.competitorHits, count)
+            acc[key] = entry
         }
 
         // Review mining: count how often each known term (or its words) is mentioned,
