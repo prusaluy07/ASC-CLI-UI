@@ -21,9 +21,86 @@ public struct ASCMeta: Decodable {
     public let paging: Paging?
 }
 
+/// JSON:API error document: `{ "errors": [ { "status", "code", "title", "detail" } ] }`.
+/// `asc` normally exits non-zero on API errors, but an error document can still arrive
+/// with exit 0 — it must surface as an error, not decode-collapse into an empty list.
+public struct ASCErrorsResponse: Decodable {
+    public struct APIError: Decodable {
+        public let status: String?
+        public let code: String?
+        public let title: String?
+        public let detail: String?
+    }
+    public let errors: [APIError]
+
+    public var message: String {
+        errors
+            .map { [$0.title, $0.detail].compactMap { $0 }.joined(separator: ": ") }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n")
+    }
+}
+
+public enum ASCDecodeError: LocalizedError {
+    /// The command exited 0 but returned a JSON:API errors document.
+    case api(String)
+    /// The output could not be decoded at all.
+    case malformed(String)
+
+    public var errorDescription: String? {
+        switch self {
+        case .api(let message), .malformed(let message): return message
+        }
+    }
+}
+
+/// Decodes `asc` JSON:API list output into typed models. Foundation-only so the
+/// iOS companion target and the unit tests can use it directly.
+public enum ASCJSONList {
+    /// - Returns: the decoded items plus paging info when the envelope carries `meta.paging`,
+    ///   so callers can detect a page truncated by `--limit`.
+    /// - Throws: `ASCDecodeError.api` for a JSON:API errors document,
+    ///   `ASCDecodeError.malformed` when the output isn't decodable at all —
+    ///   distinguishing both from a genuinely empty `data` array.
+    public static func decode<T: Decodable>(_ output: String, as type: T.Type) throws -> (items: [T], paging: ASCMeta.Paging?) {
+        guard !output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              let data = output.data(using: .utf8) else {
+            throw ASCDecodeError.malformed("asc returned no output.")
+        }
+        let decoder = JSONDecoder()
+        do {
+            let wrapped = try decoder.decode(ASCListResponse<T>.self, from: data)
+            return (wrapped.data, wrapped.meta?.paging)
+        } catch let envelopeError {
+            // Some subcommands return a bare array instead of the envelope.
+            if let bare = try? decoder.decode([T].self, from: data) {
+                return (bare, nil)
+            }
+            if let doc = try? decoder.decode(ASCErrorsResponse.self, from: data), !doc.errors.isEmpty {
+                throw ASCDecodeError.api(doc.message)
+            }
+            throw ASCDecodeError.malformed("Unexpected JSON from asc: \(envelopeError.localizedDescription)")
+        }
+    }
+}
+
 /// Shared coding keys for the JSON:API resource envelope.
 private enum ResourceKey: String, CodingKey {
     case id, type, attributes
+}
+
+public extension KeyedDecodingContainer {
+    /// Decodes a Bool that may arrive as a native bool, a string ("true"/"1"/"yes")
+    /// or a number — App Store Connect attributes occasionally drift between these,
+    /// and a plain `try? decode(Bool.self)` would silently turn "true" into `false`.
+    func decodeFlexibleBool(forKey key: Key) -> Bool? {
+        if let b = try? decode(Bool.self, forKey: key) { return b }
+        if let s = try? decode(String.self, forKey: key) {
+            return ["true", "yes", "1"].contains(s.lowercased())
+        }
+        if let i = try? decode(Int.self, forKey: key) { return i != 0 }
+        return nil
+    }
 }
 
 // MARK: - Models
@@ -167,9 +244,9 @@ public struct ASCBetaGroup: Identifiable, Decodable {
         id = try c.decode(String.self, forKey: .id)
         let a = try c.nestedContainer(keyedBy: Attr.self, forKey: .attributes)
         name = (try? a.decode(String.self, forKey: .name)) ?? "(group)"
-        isInternal = (try? a.decode(Bool.self, forKey: .isInternalGroup)) ?? false
-        hasAccessToAllBuilds = (try? a.decode(Bool.self, forKey: .hasAccessToAllBuilds)) ?? false
-        feedbackEnabled = (try? a.decode(Bool.self, forKey: .feedbackEnabled)) ?? false
+        isInternal = a.decodeFlexibleBool(forKey: .isInternalGroup) ?? false
+        hasAccessToAllBuilds = a.decodeFlexibleBool(forKey: .hasAccessToAllBuilds) ?? false
+        feedbackEnabled = a.decodeFlexibleBool(forKey: .feedbackEnabled) ?? false
         createdDate = try? a.decode(String.self, forKey: .createdDate)
     }
 }

@@ -557,18 +557,22 @@ struct AnalyticsView: View {
             return
         }
 
-        let date = Self.dateFmt.string(from: weekMonday)
-        let view = await ascService.analyticsViewReports(requestId: requestId, date: date)
-        reportRaw += "$ asc analytics view --request-id \(requestId) --date \(date)\n" + outText(view) + "\n\n"
+        // List all available instances instead of filtering server-side on the week's
+        // Monday: Apple publishes daily instances with a ~2–3 day lag, so an exact
+        // `--date` match usually finds nothing even though other days' instances exist.
+        let view = await ascService.analyticsViewReports(requestId: requestId)
+        reportRaw += "$ asc analytics view --request-id \(requestId) --paginate\n" + outText(view) + "\n\n"
         guard view.succeeded else {
             reportForbidden = isForbidden(view)
             reportStatus = reportForbidden ? loc(.anReportForbidden) : view.errorMessage
             return
         }
 
-        let instances = AnalyticsReportLocator.instances(fromViewJSON: view.output)
-        reportInstances = instances
-        guard let instance = instances.first else {
+        let week = Self.dateFmt.string(from: weekMonday)
+        let selection = AnalyticsReportLocator.select(
+            AnalyticsReportLocator.instances(fromViewJSON: view.output), weekStarting: week)
+        reportInstances = selection.instances
+        guard let instance = selection.instances.first else {
             reportStatus = loc(.anReportProcessing)
             return
         }
@@ -592,7 +596,11 @@ struct AnalyticsView: View {
         }
         deriveConversionIfPossible()
         allMetrics += metrics
-        reportStatus = loc(.anReportLoadedFmt, table.rows.count, instance.reportName ?? instance.instanceId)
+        var status = loc(.anReportLoadedFmt, table.rows.count, instance.reportName ?? instance.instanceId)
+        if selection.isFallback {
+            status += " " + loc(.anReportWeekFallbackFmt, instance.processingDate ?? "—")
+        }
+        reportStatus = status
     }
 
     /// Derives a conversion-rate card from impressions + downloads when the report didn't

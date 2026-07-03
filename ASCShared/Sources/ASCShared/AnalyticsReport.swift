@@ -254,6 +254,54 @@ public enum AnalyticsReportLocator {
     }
 }
 
+// MARK: - Narrowing instances to a requested week
+
+public extension AnalyticsReportLocator {
+    /// Instances narrowed to a requested week, or the newest available ones as a fallback.
+    struct WeekSelection: Sendable, Equatable {
+        public let instances: [AnalyticsInstanceRef]
+        /// True when the requested week has no instances yet and `instances` carries the
+        /// newest available ones instead (Apple publishes daily instances ~2–3 days behind).
+        public let isFallback: Bool
+
+        public init(instances: [AnalyticsInstanceRef], isFallback: Bool) {
+            self.instances = instances
+            self.isFallback = isFallback
+        }
+    }
+
+    /// Filters `all` (as returned by `instances(fromViewJSON:)`, newest first) to instances
+    /// whose `processingDate` lies within the 7-day week starting at `weekStart`
+    /// (`yyyy-MM-dd`). When the week has no instances yet, the full list is returned as a
+    /// fallback so callers can show the newest available data instead of nothing.
+    static func select(_ all: [AnalyticsInstanceRef], weekStarting weekStart: String) -> WeekSelection {
+        guard !all.isEmpty else { return WeekSelection(instances: [], isFallback: false) }
+        guard let weekEnd = dayString(weekStart, addingDays: 6) else {
+            // Unparseable week start: don't filter at all.
+            return WeekSelection(instances: all, isFallback: false)
+        }
+        // `processingDate` is ISO "yyyy-MM-dd", so string comparison is chronological.
+        let inWeek = all.filter { ref in
+            guard let day = ref.processingDate else { return false }
+            return day >= weekStart && day <= weekEnd
+        }
+        if inWeek.isEmpty { return WeekSelection(instances: all, isFallback: true) }
+        return WeekSelection(instances: inWeek, isFallback: false)
+    }
+
+    private static func dayString(_ day: String, addingDays offset: Int) -> String? {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyy-MM-dd"
+        fmt.locale = Locale(identifier: "en_US_POSIX")
+        fmt.timeZone = TimeZone(identifier: "UTC")
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = fmt.timeZone
+        guard let date = fmt.date(from: day),
+              let shifted = cal.date(byAdding: .day, value: offset, to: date) else { return nil }
+        return fmt.string(from: shifted)
+    }
+}
+
 // MARK: - Local JSONValue accessors
 
 private extension JSONValue {

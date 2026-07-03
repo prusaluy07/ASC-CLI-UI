@@ -20,7 +20,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
 
     var items: [SidebarItem] {
         switch self {
-        case .app:          return [.overview, .analytics, .apps, .versions, .metadata, .media, .pricing, .reviews, .marketing]
+        case .app:          return [.overview, .analytics, .apps, .versions, .metadata, .asoAgent, .media, .pricing, .reviews, .marketing]
         case .market:       return [.marketCharts, .marketSearch, .marketSDKs]
         case .monetization: return [.subscriptions, .iap, .appEvents]
         case .build:        return [.builds, .testflight, .xcodeCloud]
@@ -32,7 +32,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
 }
 
 enum SidebarItem: String, CaseIterable, Identifiable {
-    case overview, analytics, apps, versions, metadata, media, pricing, reviews, marketing
+    case overview, analytics, apps, versions, metadata, asoAgent, media, pricing, reviews, marketing
     case marketCharts, marketSearch, marketSDKs
     case subscriptions, iap, appEvents
     case builds, testflight, xcodeCloud
@@ -49,6 +49,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .apps:       return .secApps
         case .versions:   return .secVersions
         case .metadata:   return .secMetadata
+        case .asoAgent:   return .secASOAgent
         case .media:      return .secMedia
         case .pricing:    return .secPricing
         case .reviews:    return .secReviews
@@ -86,6 +87,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .apps:       return "square.stack.3d.up"
         case .versions:   return "tag"
         case .metadata:   return "doc.text"
+        case .asoAgent:   return "wand.and.stars"
         case .media:      return "photo.on.rectangle"
         case .pricing:    return "dollarsign.circle"
         case .reviews:    return "star.bubble"
@@ -119,7 +121,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     /// Sections that operate on a specific app.
     var requiresApp: Bool {
         switch self {
-        case .analytics, .versions, .metadata, .media, .builds, .testflight, .xcodeCloud, .release,
+        case .analytics, .versions, .metadata, .asoAgent, .media, .builds, .testflight, .xcodeCloud, .release,
              .pricing, .reviews, .payments, .subscriptions, .iap, .appEvents, .submission, .compliance: return true
         default: return false
         }
@@ -208,6 +210,12 @@ struct ContentView: View {
             ToolbarItem(placement: .navigation) {
                 if ascService.isLoading {
                     ProgressView().controlSize(.small)
+                } else if let notice = ascService.truncationNotice {
+                    // The last list response was cut off by its --limit.
+                    Label(notice, systemImage: "exclamationmark.triangle")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .help(notice)
                 }
             }
             ToolbarItemGroup(placement: .primaryAction) {
@@ -337,6 +345,8 @@ struct ContentView: View {
                 VersionsView(selectedApp: selectedApp)
             case .metadata:
                 MetadataView(selectedApp: selectedApp)
+            case .asoAgent:
+                ASOAgentView(selectedApp: selectedApp)
             case .media:
                 MediaView(selectedApp: selectedApp)
             case .pricing:

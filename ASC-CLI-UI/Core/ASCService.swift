@@ -49,8 +49,18 @@ final class ASCService: ObservableObject {
     @Published var requestTimeoutSeconds: Int
 
     // UI state
-    @Published var isLoading: Bool = false
+    /// True while at least one loader is in flight. Loads can overlap (prefetch plus a
+    /// user-triggered refresh), so this is derived from a reference count instead of
+    /// being toggled by whichever load happens to finish first.
+    @Published private(set) var isLoading: Bool = false
     @Published var lastError: String?
+    /// Non-blocking notice set when the last list response was truncated by its `--limit`
+    /// (`meta.paging.total` exceeds the returned row count).
+    @Published var truncationNotice: String?
+
+    private var loadingCount = 0 {
+        didSet { isLoading = loadingCount > 0 }
+    }
 
     private let defaults = UserDefaults.standard
     private let binaryPathKey = "asc.binaryPath"
@@ -148,67 +158,89 @@ final class ASCService: ObservableObject {
 
         let finalArgs = args
         let timeoutSeconds = max(15, requestTimeoutSeconds)
-        return await Task.detached(priority: .userInitiated) {
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: binary)
-            process.arguments = finalArgs
+        let box = ProcessBox()
+        return await withTaskCancellationHandler {
+            await Task.detached(priority: .userInitiated) {
+                let process = Process()
+                process.executableURL = URL(fileURLWithPath: binary)
+                process.arguments = finalArgs
 
-            // Ensure Homebrew paths are present so `asc` can find its helpers.
-            var env = ProcessInfo.processInfo.environment
-            let extraPaths = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
-            env["PATH"] = (env["PATH"].map { "\($0):\(extraPaths)" }) ?? extraPaths
-            // Raise the per-request timeout; analytics `view`/`compare` otherwise fail with
-            // "context deadline exceeded" against Apple's slow analytics endpoints.
-            env["ASC_TIMEOUT"] = "\(timeoutSeconds)s"
-            process.environment = env
+                // Ensure Homebrew paths are present so `asc` can find its helpers.
+                var env = ProcessInfo.processInfo.environment
+                let extraPaths = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+                env["PATH"] = (env["PATH"].map { "\($0):\(extraPaths)" }) ?? extraPaths
+                // Raise the per-request timeout; analytics `view`/`compare` otherwise fail with
+                // "context deadline exceeded" against Apple's slow analytics endpoints.
+                env["ASC_TIMEOUT"] = "\(timeoutSeconds)s"
+                process.environment = env
 
-            let outPipe = Pipe()
-            let errPipe = Pipe()
-            process.standardOutput = outPipe
-            process.standardError = errPipe
+                let outPipe = Pipe()
+                let errPipe = Pipe()
+                process.standardOutput = outPipe
+                process.standardError = errPipe
 
-            do {
-                try process.run()
-            } catch {
+                do {
+                    try process.run()
+                } catch {
+                    return CommandResult(
+                        arguments: finalArgs,
+                        output: "",
+                        errorOutput: "Failed to launch \(binary): \(error.localizedDescription)",
+                        exitCode: -1
+                    )
+                }
+
+                // Without this the subprocess would run to completion (up to ASC_TIMEOUT)
+                // after the awaiting SwiftUI task is cancelled, keeping both pipe-reading
+                // threads blocked the whole time.
+                if !box.register(process) {
+                    process.terminate()
+                }
+
+                // Drain stdout and stderr concurrently; reading one fully before the other can
+                // deadlock if the process fills the unread pipe's buffer (~64KB).
+                let errHandle = errPipe.fileHandleForReading
+                var errData = Data()
+                let errQueue = DispatchQueue(label: "asc.stderr.reader")
+                let group = DispatchGroup()
+                group.enter()
+                errQueue.async { errData = errHandle.readDataToEndOfFile(); group.leave() }
+                let outData = outPipe.fileHandleForReading.readDataToEndOfFile()
+                group.wait()
+                process.waitUntilExit()
+
                 return CommandResult(
                     arguments: finalArgs,
-                    output: "",
-                    errorOutput: "Failed to launch \(binary): \(error.localizedDescription)",
-                    exitCode: -1
+                    output: String(data: outData, encoding: .utf8) ?? "",
+                    errorOutput: String(data: errData, encoding: .utf8) ?? "",
+                    exitCode: process.terminationStatus
                 )
-            }
-
-            // Drain stdout and stderr concurrently; reading one fully before the other can
-            // deadlock if the process fills the unread pipe's buffer (~64KB).
-            let errHandle = errPipe.fileHandleForReading
-            var errData = Data()
-            let errQueue = DispatchQueue(label: "asc.stderr.reader")
-            let group = DispatchGroup()
-            group.enter()
-            errQueue.async { errData = errHandle.readDataToEndOfFile(); group.leave() }
-            let outData = outPipe.fileHandleForReading.readDataToEndOfFile()
-            group.wait()
-            process.waitUntilExit()
-
-            return CommandResult(
-                arguments: finalArgs,
-                output: String(data: outData, encoding: .utf8) ?? "",
-                errorOutput: String(data: errData, encoding: .utf8) ?? "",
-                exitCode: process.terminationStatus
-            )
-        }.value
+            }.value
+        } onCancel: {
+            box.cancel()
+        }
     }
 
     // MARK: - Auth
 
     /// Refreshes auth status from `asc auth status` and updates `isConfigured`.
     func refreshAuthStatus() async {
-        let result = await run(["auth", "status"])
-        guard result.succeeded,
-              let data = result.output.data(using: .utf8),
-              let status = try? JSONDecoder().decode(ASCAuthStatus.self, from: data) else {
+        guard binaryExists else {
+            // No binary yet (first launch / not installed): genuinely unconfigured.
             authStatus = nil
             isConfigured = false
+            return
+        }
+        let result = await run(["auth", "status"])
+        guard result.succeeded else {
+            // A failed check is not proof of "no credentials" — keep the last known
+            // auth state and surface the failure instead of a false "not configured".
+            lastError = "Could not check auth status: \(result.errorMessage)"
+            return
+        }
+        guard let data = result.output.data(using: .utf8),
+              let status = try? JSONDecoder().decode(ASCAuthStatus.self, from: data) else {
+            lastError = "Unexpected output from `asc auth status`."
             return
         }
 
@@ -261,73 +293,89 @@ final class ASCService: ObservableObject {
 
     // MARK: - Data loading
 
-    private func decodeList<T: Decodable>(_ output: String, as type: T.Type) -> [T] {
-        guard let data = output.data(using: .utf8) else { return [] }
-        let decoder = JSONDecoder()
-        if let wrapped = try? decoder.decode(ASCListResponse<T>.self, from: data) {
-            return wrapped.data
+    /// Decodes a JSON:API list document. Parse failures and JSON:API error documents
+    /// throw (surfacing via `lastError`) instead of collapsing into an empty list, so
+    /// "no data" stays distinguishable from "broken response". Also records a notice
+    /// when the page was truncated by its `--limit`.
+    private func decodeList<T: Decodable>(_ output: String, as type: T.Type) throws -> [T] {
+        let (items, paging) = try ASCJSONList.decode(output, as: type)
+        if let total = paging?.total, total > items.count {
+            truncationNotice = "Showing first \(items.count) of \(total) entries."
         }
-        // Fall back to a bare array in case a subcommand returns one.
-        return (try? decoder.decode([T].self, from: data)) ?? []
+        return items
     }
 
     /// Wraps a loading operation with shared `isLoading`/`lastError` handling.
-    private func load(_ operation: () async -> CommandResult, onSuccess: (CommandResult) -> Void) async {
-        isLoading = true
+    /// A decode failure thrown by `onSuccess` is reported like a command failure.
+    private func load(_ operation: () async -> CommandResult, onSuccess: (CommandResult) throws -> Void) async {
+        loadingCount += 1
+        defer { loadingCount -= 1 }
         lastError = nil
+        truncationNotice = nil
         let result = await operation()
-        isLoading = false
-        if result.succeeded {
-            onSuccess(result)
-        } else {
+        // The task that triggered the load is gone; don't flash its outcome into the UI.
+        if Task.isCancelled { return }
+        guard result.succeeded else {
             lastError = result.errorMessage
+            return
+        }
+        do {
+            try onSuccess(result)
+        } catch {
+            lastError = error.localizedDescription
         }
     }
 
     func loadApps() async {
         await load({ await run(["apps", "list", "--limit", "200", "--sort", "name"]) }) { result in
-            apps = decodeList(result.output, as: ASCApp.self)
+            apps = try decodeList(result.output, as: ASCApp.self)
         }
     }
 
     func loadBuilds(for appId: String) async {
+        // Switching apps: drop the previous app's rows up front so a failed load
+        // doesn't leave them on screen under the newly selected app.
+        if buildsAppId != appId { builds = []; buildsAppId = nil }
         await load({ await run(["builds", "list", "--app", appId, "--limit", "50"]) }) { result in
-            builds = decodeList(result.output, as: ASCBuild.self)
+            builds = try decodeList(result.output, as: ASCBuild.self)
             buildsAppId = appId
         }
     }
 
     func loadVersions(for appId: String) async {
+        if versionsAppId != appId { versions = []; versionsAppId = nil }
         await load({ await run(["versions", "list", "--app", appId, "--limit", "50"]) }) { result in
-            versions = decodeList(result.output, as: ASCVersion.self)
+            versions = try decodeList(result.output, as: ASCVersion.self)
             versionsAppId = appId
         }
     }
 
     func loadCertificates() async {
         await load({ await run(["certificates", "list", "--limit", "200"]) }) { result in
-            certificates = decodeList(result.output, as: ASCCertificate.self)
+            certificates = try decodeList(result.output, as: ASCCertificate.self)
         }
     }
 
     func loadProfiles() async {
         await load({ await run(["profiles", "list", "--limit", "200"]) }) { result in
-            profiles = decodeList(result.output, as: ASCProfile.self)
+            profiles = try decodeList(result.output, as: ASCProfile.self)
         }
     }
 
     // MARK: - TestFlight
 
     func loadBetaGroups(for appId: String) async {
+        if betaGroupsAppId != appId { betaGroups = []; betaGroupsAppId = nil }
         await load({ await run(["testflight", "groups", "list", "--app", appId, "--limit", "200"]) }) { result in
-            betaGroups = decodeList(result.output, as: ASCBetaGroup.self)
+            betaGroups = try decodeList(result.output, as: ASCBetaGroup.self)
             betaGroupsAppId = appId
         }
     }
 
     func loadBetaTesters(for appId: String) async {
+        if betaTestersAppId != appId { betaTesters = []; betaTestersAppId = nil }
         await load({ await run(["testflight", "testers", "list", "--app", appId, "--limit", "200"]) }) { result in
-            betaTesters = decodeList(result.output, as: ASCBetaTester.self)
+            betaTesters = try decodeList(result.output, as: ASCBetaTester.self)
             betaTestersAppId = appId
         }
     }
@@ -341,7 +389,7 @@ final class ASCService: ObservableObject {
 
     func loadVersionLocalizations(versionId: String) async {
         await load({ await run(["localizations", "list", "--version", versionId]) }) { result in
-            versionLocalizations = decodeList(result.output, as: ASCVersionLocalization.self)
+            versionLocalizations = try decodeList(result.output, as: ASCVersionLocalization.self)
         }
     }
 
@@ -372,11 +420,16 @@ final class ASCService: ObservableObject {
     // MARK: - Release / status
 
     func loadStatus(for appId: String) async {
+        if statusAppId != appId { statusReport = nil; statusAppId = nil }
         await load({ await run(["status", "--app", appId,
                                 "--include", "app,builds,testflight,appstore,submission,review,phased-release,links"]) }) { result in
-            if let data = result.output.data(using: .utf8) {
-                statusReport = try? JSONDecoder().decode(ASCStatusReport.self, from: data)
+            guard let data = result.output.data(using: .utf8),
+                  let report = try? JSONDecoder().decode(ASCStatusReport.self, from: data) else {
+                throw ASCDecodeError.malformed("Unexpected output from `asc status`.")
             }
+            statusReport = report
+            // Only a successful decode marks the cache valid; otherwise `ensureStatus`
+            // would treat the failure as a cache hit and never retry for this app.
             statusAppId = appId
         }
     }
@@ -648,7 +701,7 @@ final class ASCService: ObservableObject {
 
     func loadBundleIds() async {
         await load({ await run(["bundle-ids", "list", "--limit", "200"]) }) { result in
-            bundleIds = decodeList(result.output, as: ASCBundleId.self)
+            bundleIds = try decodeList(result.output, as: ASCBundleId.self)
         }
     }
 
@@ -1034,5 +1087,32 @@ final class ASCService: ObservableObject {
                     "--frequency", frequency]
         if !vendorNumber.isEmpty { args += ["--vendor", vendorNumber] }
         return await run(args, capability: .finance)
+    }
+}
+
+// MARK: - Process cancellation support
+
+/// Lets a task-cancellation handler terminate the `asc` subprocess owned by the
+/// detached task inside `run`. Top-level (not nested in the @MainActor service) so
+/// it carries no actor isolation; the lock makes the cross-thread access safe.
+private final class ProcessBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var process: Process?
+    private var cancelled = false
+
+    /// Registers the launched process so `cancel()` can terminate it.
+    /// Returns false when cancellation already happened — the caller must then
+    /// terminate the process itself, since `cancel()` ran before it was registered.
+    func register(_ process: Process) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        if cancelled { return false }
+        self.process = process
+        return true
+    }
+
+    func cancel() {
+        lock.lock(); defer { lock.unlock() }
+        cancelled = true
+        if let process, process.isRunning { process.terminate() }
     }
 }

@@ -258,7 +258,7 @@ public enum LocKey: String {
     case anAllMetrics, anAnalyticsRestricted, anStatusUnavailable
     case anNeedRequest
     case anReportTitle, anReportBody, anReportLoad, anReportCreate
-    case anReportProcessing, anReportForbidden, anReportCreated, anReportLoadedFmt
+    case anReportProcessing, anReportForbidden, anReportCreated, anReportLoadedFmt, anReportWeekFallbackFmt
     case anAdminRequiredTitle, anAdminRequiredBody, anAnalyticsUsingProfileFmt, anOpenProfileSettings
 
     // Local metrics store (Milestone 1)
@@ -323,6 +323,37 @@ public enum LocKey: String {
     // Remote settings
     case rmDataSection, rmMirroredCountFmt, rmLastSync, rmNever
     case rmCompatMacApp, rmSourceCode, rmImpressum, rmImpressumBody, rmAppInfoNote
+    case rmLatestVersion, rmLatestBuild, rmRating, rmRank, rmDownloads, rmDownloads7d, rmProceeds7d
+    case rmWeekCompare, rmRatingsCountFmt, rmInternalGroup
+
+    // ASO agent (Appfigures-assisted metadata optimization)
+    case secASOAgent, asoTitle, asoBody
+    case asoConfigTitle, asoApiKey, asoApiKeyHint, asoGetKey, asoCountry, asoCountryHint
+    case asoProductId, asoProductIdHint, asoSeeds, asoSeedsHint
+    case asoUseTracked, asoMineReviews
+    case asoStart, asoCancelRun, asoNeedKeyOrSeeds
+    case asoStepMetadata, asoStepProduct, asoStepKeywords, asoStepReviews, asoStepCompose
+    case asoSkipped, asoProductResolvedFmt, asoProductNotFound, asoKeywordCountFmt, asoReviewCountFmt
+    case asoResults, asoProposedKeywords, asoCharsFmt, asoCopy, asoCopied
+    case asoApply, asoApplyConfirmTitle, asoApplyConfirmMsg, asoApplied
+    case asoTitleIdeas, asoSubtitleIdeas, asoWarningsTitle, asoCandidates
+    case asoColTerm, asoColScore, asoColPop, asoColComp, asoColRank, asoColSources, asoCoveredBadge
+    case asoSrcTracked, asoSrcSeed, asoSrcCurrent, asoSrcReviews
+    case asoWarnSpacesFmt, asoWarnDupsFmt, asoWarnTitleDupsFmt
+    case asoWarnOverLimitFmt, asoWarnReservedFmt, asoWarnBudgetFmt
+    case asoSaveReport, asoReportSavedFmt, asoNoCandidates
+    case asoSubtitleField, asoSubtitleFieldHint
+
+    // ASO: competitor mining + scorecard
+    case asoUseCompetitors, asoCompetitorTermField, asoCompetitorTermHint
+    case asoStepCompetitors, asoCompetitorCountFmt, asoSrcCompetitor
+    case asoScoreTitle, asoScoreKeywordBudget, asoScoreClean, asoScoreTitleUse, asoScoreSubtitleUse
+
+    // Keyword-tracking agent (plan → paste into Appfigures → verify)
+    case trkTitle, trkBody, trkSuggestionsFmt, trkAlreadyFmt
+    case trkCopyList, trkOpenAppfigures, trkVerify, trkVerifying
+    case trkVerifyResultFmt, trkNeedRun, trkNoSuggestions
+    case trkTrackedBadge, trkMissingBadge, trkSelectAll, trkSelectNone
 }
 
 // MARK: - Manager
@@ -1222,6 +1253,8 @@ enum Strings {
         .anReportCreated: ["en": "Requested. Apple prepares the reports over roughly the next 1–2 days.",
                            "de": "Angefordert. Apple bereitet die Berichte über etwa 1–2 Tage auf."],
         .anReportLoadedFmt: ["en": "Loaded %d rows from report \"%@\".", "de": "%d Zeilen aus Bericht „%@“ geladen."],
+        .anReportWeekFallbackFmt: ["en": "No instances for the selected week yet — showing the newest available report (%@).",
+                                   "de": "Für die gewählte Woche gibt es noch keine Instanzen — angezeigt wird der neueste verfügbare Bericht (%@)."],
         .anAnalyticsRestricted: ["en": "This API key can't read App Analytics reports, so acquisition metrics (impressions, page views, conversion) are unavailable — this is an Apple API restriction, not a bug. Downloads, revenue and subscriptions come from the Sales reports: set a vendor number under Reports. For analytics access, use a key with Admin/Account Holder role and enabled App Analytics reporting.",
                                  "de": "Dieser API-Key darf keine App-Analytics-Berichte lesen, daher sind Akquise-Kennzahlen (Impressionen, Seitenaufrufe, Konversion) nicht verfügbar — das ist eine Apple-API-Beschränkung, kein Fehler. Downloads, Umsatz und Abos stammen aus den Sales-Berichten: hinterlege dazu eine Anbieternummer unter „Berichte“. Für Analytics-Zugriff brauchst du einen Key mit Rolle Admin/Account Holder und aktivierter App-Analytics-Berichterstattung."],
         .anAdminRequiredTitle: ["en": "Admin API key required for analytics",
@@ -1297,6 +1330,16 @@ enum Strings {
         .rmImpressum:    ["en": "Legal notice", "de": "Impressum"],
         .rmImpressumBody:["en": "ASC Remote is a private, non-commercial companion to ASC Manager. It is not affiliated with or endorsed by Apple. It only reads data you mirror from your own Mac via your private iCloud database and never accesses App Store Connect directly.",
                           "de": "ASC Remote ist eine private, nicht-kommerzielle Begleit-App zu ASC Manager. Sie steht in keiner Verbindung zu Apple und wird nicht von Apple unterstützt. Sie liest ausschließlich Daten, die du von deinem eigenen Mac über deine private iCloud-Datenbank spiegelst, und greift nie direkt auf App Store Connect zu."],
+        .rmLatestVersion: ["en": "Latest version", "de": "Neueste Version"],
+        .rmLatestBuild:  ["en": "Latest build", "de": "Neuester Build"],
+        .rmRating:       ["en": "Rating", "de": "Bewertung"],
+        .rmRank:         ["en": "Chart rank", "de": "Chart-Platzierung"],
+        .rmDownloads:    ["en": "Downloads", "de": "Downloads"],
+        .rmDownloads7d:  ["en": "Downloads (7 days)", "de": "Downloads (7 Tage)"],
+        .rmProceeds7d:   ["en": "Proceeds (7 days)", "de": "Erlöse (7 Tage)"],
+        .rmWeekCompare:  ["en": "This week vs last week", "de": "Diese Woche vs. Vorwoche"],
+        .rmRatingsCountFmt: ["en": "%d ratings", "de": "%d Bewertungen"],
+        .rmInternalGroup: ["en": "Internal", "de": "Intern"],
         .rmAppInfoNote:  ["en": "Read-only mirror. No App Store Connect credentials are stored on this device.",
                           "de": "Schreibgeschützte Spiegelung. Auf diesem Gerät werden keine App-Store-Connect-Zugangsdaten gespeichert."],
 
@@ -1393,5 +1436,123 @@ enum Strings {
         .tlLocalAPI:         ["en": "Local metrics API", "de": "Lokale Metriken-API"],
         .tlLocalAPIHint:     ["en": "http://localhost:%@/metrics — GET /health, /metrics, /metrics/{appId}",
                                "de": "http://localhost:%@/metrics — GET /health, /metrics, /metrics/{appId}"],
+
+        // ASO agent
+        .secASOAgent:        ["en": "ASO Agent", "de": "ASO-Agent"],
+        .asoTitle:           ["en": "ASO Agent", "de": "ASO-Agent"],
+        .asoBody:            ["en": "Combines your current App Store metadata, Appfigures keyword research, and customer reviews into an optimized keyword field plus title and subtitle ideas.",
+                              "de": "Kombiniert deine aktuellen App-Store-Metadaten, Appfigures-Keyword-Recherche und Kundenbewertungen zu einem optimierten Keyword-Feld sowie Titel- und Untertitel-Ideen."],
+        .asoConfigTitle:     ["en": "Inputs", "de": "Eingaben"],
+        .asoApiKey:          ["en": "Appfigures API key", "de": "Appfigures-API-Schlüssel"],
+        .asoApiKeyHint:      ["en": "Personal access token — stored in your macOS keychain.",
+                              "de": "Personal Access Token — wird im macOS-Schlüsselbund gespeichert."],
+        .asoGetKey:          ["en": "Create a token at appfigures.com → API", "de": "Token erstellen unter appfigures.com → API"],
+        .asoCountry:         ["en": "Country", "de": "Land"],
+        .asoCountryHint:     ["en": "ISO code for keyword ranks, e.g. DE or US.",
+                              "de": "ISO-Code für Keyword-Ränge, z. B. DE oder US."],
+        .asoProductId:       ["en": "Appfigures product ID (optional)", "de": "Appfigures-Produkt-ID (optional)"],
+        .asoProductIdHint:   ["en": "Leave empty to resolve automatically from the App Store ID.",
+                              "de": "Leer lassen, um sie automatisch über die App-Store-ID zu ermitteln."],
+        .asoSeeds:           ["en": "Seed keywords", "de": "Eigene Keyword-Ideen"],
+        .asoSeedsHint:       ["en": "Comma-separated ideas to consider in addition to the research data.",
+                              "de": "Kommagetrennte Ideen, die zusätzlich zur Recherche berücksichtigt werden."],
+        .asoUseTracked:      ["en": "Use tracked Appfigures keywords", "de": "Getrackte Appfigures-Keywords verwenden"],
+        .asoMineReviews:     ["en": "Mine customer reviews for wording", "de": "Kundenbewertungen nach Formulierungen durchsuchen"],
+        .asoStart:           ["en": "Run agent", "de": "Agent starten"],
+        .asoCancelRun:       ["en": "Cancel", "de": "Abbrechen"],
+        .asoNeedKeyOrSeeds:  ["en": "Add an Appfigures API key or seed keywords first.",
+                              "de": "Zuerst einen Appfigures-API-Schlüssel oder eigene Keywords angeben."],
+        .asoStepMetadata:    ["en": "Load current metadata (asc)", "de": "Aktuelle Metadaten laden (asc)"],
+        .asoStepProduct:     ["en": "Resolve Appfigures product", "de": "Appfigures-Produkt ermitteln"],
+        .asoStepKeywords:    ["en": "Fetch keyword ranks", "de": "Keyword-Ränge abrufen"],
+        .asoStepReviews:     ["en": "Fetch customer reviews (asc)", "de": "Kundenbewertungen laden (asc)"],
+        .asoStepCompose:     ["en": "Compose proposal", "de": "Vorschlag erstellen"],
+        .asoSkipped:         ["en": "Skipped", "de": "Übersprungen"],
+        .asoProductResolvedFmt: ["en": "Product #%@", "de": "Produkt #%@"],
+        .asoProductNotFound: ["en": "App not found in this Appfigures account — set the product ID manually.",
+                              "de": "App in diesem Appfigures-Konto nicht gefunden — Produkt-ID manuell angeben."],
+        .asoKeywordCountFmt: ["en": "%d keywords", "de": "%d Keywords"],
+        .asoReviewCountFmt:  ["en": "%d reviews", "de": "%d Bewertungen"],
+        .asoResults:         ["en": "Proposal", "de": "Vorschlag"],
+        .asoProposedKeywords:["en": "Optimized keyword field", "de": "Optimiertes Keyword-Feld"],
+        .asoCharsFmt:        ["en": "%d/%d characters", "de": "%d/%d Zeichen"],
+        .asoCopy:            ["en": "Copy", "de": "Kopieren"],
+        .asoCopied:          ["en": "Copied", "de": "Kopiert"],
+        .asoApply:           ["en": "Apply keywords via asc", "de": "Keywords über asc übernehmen"],
+        .asoApplyConfirmTitle: ["en": "Apply keywords?", "de": "Keywords übernehmen?"],
+        .asoApplyConfirmMsg: ["en": "This updates the keyword field of the selected version/locale in App Store Connect.",
+                              "de": "Aktualisiert das Keyword-Feld der gewählten Version/Sprache in App Store Connect."],
+        .asoApplied:         ["en": "Keywords updated.", "de": "Keywords aktualisiert."],
+        .asoTitleIdeas:      ["en": "Title ideas", "de": "Titel-Ideen"],
+        .asoSubtitleIdeas:   ["en": "Subtitle ideas", "de": "Untertitel-Ideen"],
+        .asoWarningsTitle:   ["en": "Findings", "de": "Hinweise"],
+        .asoCandidates:      ["en": "Keyword candidates", "de": "Keyword-Kandidaten"],
+        .asoColTerm:         ["en": "Term", "de": "Begriff"],
+        .asoColScore:        ["en": "Score", "de": "Score"],
+        .asoColPop:          ["en": "Popularity", "de": "Popularität"],
+        .asoColComp:         ["en": "Competition", "de": "Wettbewerb"],
+        .asoColRank:         ["en": "Rank", "de": "Rang"],
+        .asoColSources:      ["en": "Sources", "de": "Quellen"],
+        .asoCoveredBadge:    ["en": "In name/subtitle", "de": "In Name/Untertitel"],
+        .asoSrcTracked:      ["en": "Appfigures", "de": "Appfigures"],
+        .asoSrcSeed:         ["en": "Seed", "de": "Eigene"],
+        .asoSrcCurrent:      ["en": "Current", "de": "Aktuell"],
+        .asoSrcReviews:      ["en": "Reviews", "de": "Bewertungen"],
+        .asoWarnSpacesFmt:   ["en": "%d space(s) after commas waste characters.",
+                              "de": "%d Leerzeichen nach Kommas verschwenden Zeichen."],
+        .asoWarnDupsFmt:     ["en": "Duplicated words in keywords: %@",
+                              "de": "Doppelte Wörter im Keyword-Feld: %@"],
+        .asoWarnTitleDupsFmt:["en": "Already covered by name/subtitle: %@",
+                              "de": "Bereits durch Name/Untertitel abgedeckt: %@"],
+        .asoWarnOverLimitFmt:["en": "Keyword field has %d characters — limit is %d.",
+                              "de": "Keyword-Feld hat %d Zeichen — Limit ist %d."],
+        .asoWarnReservedFmt: ["en": "Words Apple ignores in keywords: %@",
+                              "de": "Wörter, die Apple im Keyword-Feld ignoriert: %@"],
+        .asoWarnBudgetFmt:   ["en": "%d characters unused — add more research terms or seeds.",
+                              "de": "%d Zeichen ungenutzt — weitere Recherche-Begriffe oder Ideen ergänzen."],
+        .asoSaveReport:      ["en": "Save research report…", "de": "Recherche-Bericht sichern…"],
+        .asoReportSavedFmt:  ["en": "Report saved: %@", "de": "Bericht gesichert: %@"],
+        .asoNoCandidates:    ["en": "No keyword candidates yet — add seeds or connect Appfigures.",
+                              "de": "Noch keine Keyword-Kandidaten — eigene Ideen ergänzen oder Appfigures verbinden."],
+        .asoSubtitleField:   ["en": "App subtitle (optional)", "de": "App-Untertitel (optional)"],
+        .asoSubtitleFieldHint: ["en": "Used to avoid wasting keyword characters on words Apple already indexes.",
+                              "de": "Verhindert, dass Keyword-Zeichen für bereits indexierte Wörter verschwendet werden."],
+
+        // ASO: competitor mining + scorecard
+        .asoUseCompetitors:  ["en": "Analyze competitor titles (iTunes search)",
+                              "de": "Konkurrenz-Titel analysieren (iTunes-Suche)"],
+        .asoCompetitorTermField: ["en": "Competitor search term (optional)",
+                              "de": "Suchbegriff für Konkurrenz (optional)"],
+        .asoCompetitorTermHint: ["en": "Defaults to your first seed keyword, or the app name.",
+                              "de": "Standard: dein erstes eigenes Keyword, sonst der App-Name."],
+        .asoStepCompetitors: ["en": "Analyze competitor titles", "de": "Konkurrenz-Titel analysieren"],
+        .asoCompetitorCountFmt: ["en": "%d terms from %d apps", "de": "%d Begriffe aus %d Apps"],
+        .asoSrcCompetitor:   ["en": "Competitors", "de": "Konkurrenz"],
+        .asoScoreTitle:      ["en": "ASO scorecard (current metadata)",
+                              "de": "ASO-Bewertung (aktuelle Metadaten)"],
+        .asoScoreKeywordBudget: ["en": "Keyword budget used", "de": "Keyword-Budget genutzt"],
+        .asoScoreClean:      ["en": "No wasted characters", "de": "Keine verschwendeten Zeichen"],
+        .asoScoreTitleUse:   ["en": "App name length used", "de": "App-Name-Länge genutzt"],
+        .asoScoreSubtitleUse:["en": "Subtitle length used", "de": "Untertitel-Länge genutzt"],
+
+        // Keyword-tracking agent
+        .trkTitle:           ["en": "Tracking agent", "de": "Tracking-Agent"],
+        .trkBody:            ["en": "The Appfigures API can't create tracked keywords, so this agent plans the list, copies it for the bulk-add box in Appfigures, and then verifies via the API which terms are actually tracked.",
+                              "de": "Die Appfigures-API kann keine Keywords anlegen. Dieser Agent plant daher die Liste, kopiert sie für die Sammeleingabe in Appfigures und prüft anschließend über die API, welche Begriffe wirklich getrackt werden."],
+        .trkSuggestionsFmt:  ["en": "%d terms to track", "de": "%d Begriffe zum Tracken"],
+        .trkAlreadyFmt:      ["en": "%d already tracked", "de": "%d bereits getrackt"],
+        .trkCopyList:        ["en": "Copy list", "de": "Liste kopieren"],
+        .trkOpenAppfigures:  ["en": "Open Appfigures", "de": "Appfigures öffnen"],
+        .trkVerify:          ["en": "Verify tracking", "de": "Tracking prüfen"],
+        .trkVerifying:       ["en": "Checking…", "de": "Prüfe…"],
+        .trkVerifyResultFmt: ["en": "%d tracked · %d missing", "de": "%d getrackt · %d fehlen"],
+        .trkNeedRun:         ["en": "Run the agent above first to plan tracking terms.",
+                              "de": "Zuerst den Agenten oben ausführen, um Tracking-Begriffe zu planen."],
+        .trkNoSuggestions:   ["en": "Everything worth tracking is already tracked.",
+                              "de": "Alles Relevante wird bereits getrackt."],
+        .trkTrackedBadge:    ["en": "Tracked", "de": "Getrackt"],
+        .trkMissingBadge:    ["en": "Missing", "de": "Fehlt"],
+        .trkSelectAll:       ["en": "Select all", "de": "Alle auswählen"],
+        .trkSelectNone:      ["en": "Select none", "de": "Keine auswählen"],
     ]
 }

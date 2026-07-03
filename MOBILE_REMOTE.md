@@ -170,3 +170,24 @@ unprovisioned iCloud container breaks automatic / headless code signing).
 > Note: the consumer fetches the whole zone via `CKFetchRecordZoneChangesOperation`, so it
 > needs **no** queryable indexes — only that the `ASCMirror` zone exists (created by the
 > producer's first sync).
+
+## Phase 3c — iOS dashboard (overview, charts, typed sections)
+
+The consumer renders more than raw JSON now:
+
+- **Per-app overview** (top of the sections list): stat tiles assembled from the
+  producer's snapshot summaries — release health (+ next action), latest version and
+  build with state, average rating, public chart rank (with rank delta), and 7-day
+  downloads/proceeds when `storedMetrics` is mirrored.
+- **14-day trend chart** (Swift Charts) from the `storedMetrics` payload; downloads
+  and proceeds are separate single-axis series behind a segmented picker.
+- **Week-over-week metrics** from the mirrored `analytics` (insights weekly) payload,
+  as a stat list with delta chips (mixed units, deliberately not a shared-axis chart).
+- **Typed section details** for `versions`, `builds` and `betaGroups` (native cards
+  with state badges via the shared `ASCJSONList` decoder), plus dedicated views for
+  `storedMetrics`, `marketRank`, `reviews` and `analytics`. Any payload that fails to
+  parse falls back to the schema-agnostic `OutputView` as before.
+
+Typed payload models (`StoredMetricsPayload`, `MarketRankPayload`) live in
+`ASCShared/Sources/ASCShared/MirrorInsights.swift` and are covered by
+`MirrorInsightsTests`.
