@@ -49,9 +49,11 @@ The sidebar is grouped into **App**, **Builds**, **Release**, and **Developer**.
   promotional text, support/marketing URLs) per language, **plus** pull/validate/apply
   canonical metadata files across locales.
 - **ASO Agent** – one-click keyword optimization: combines the current metadata (via `asc`),
-  Appfigures keyword research (personal access token, stored in the keychain), and customer
-  reviews into an optimized ≤100-char keyword field, title/subtitle ideas, and findings —
-  apply the keywords back via `asc` or export a markdown research report. A companion
+  Appfigures keyword research (personal access token, stored in the keychain), customer
+  reviews, and **competitor titles** (via iTunes search, no key needed) into an optimized
+  ≤100-char keyword field, title/subtitle ideas, an **ASO scorecard** grading the current
+  metadata, and findings — apply the keywords back via `asc` or export a markdown research
+  report. A companion
   **tracking agent** plans which search phrases to track in Appfigures (the public API is
   read-only for keywords), exports the list for Appfigures' bulk-add box, and verifies via
   the API which terms are actually tracked.

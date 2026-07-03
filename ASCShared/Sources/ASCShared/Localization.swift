@@ -344,6 +344,11 @@ public enum LocKey: String {
     case asoSaveReport, asoReportSavedFmt, asoNoCandidates
     case asoSubtitleField, asoSubtitleFieldHint
 
+    // ASO: competitor mining + scorecard
+    case asoUseCompetitors, asoCompetitorTermField, asoCompetitorTermHint
+    case asoStepCompetitors, asoCompetitorCountFmt, asoSrcCompetitor
+    case asoScoreTitle, asoScoreKeywordBudget, asoScoreClean, asoScoreTitleUse, asoScoreSubtitleUse
+
     // Keyword-tracking agent (plan → paste into Appfigures → verify)
     case trkTitle, trkBody, trkSuggestionsFmt, trkAlreadyFmt
     case trkCopyList, trkOpenAppfigures, trkVerify, trkVerifying
@@ -1512,6 +1517,23 @@ enum Strings {
         .asoSubtitleField:   ["en": "App subtitle (optional)", "de": "App-Untertitel (optional)"],
         .asoSubtitleFieldHint: ["en": "Used to avoid wasting keyword characters on words Apple already indexes.",
                               "de": "Verhindert, dass Keyword-Zeichen für bereits indexierte Wörter verschwendet werden."],
+
+        // ASO: competitor mining + scorecard
+        .asoUseCompetitors:  ["en": "Analyze competitor titles (iTunes search)",
+                              "de": "Konkurrenz-Titel analysieren (iTunes-Suche)"],
+        .asoCompetitorTermField: ["en": "Competitor search term (optional)",
+                              "de": "Suchbegriff für Konkurrenz (optional)"],
+        .asoCompetitorTermHint: ["en": "Defaults to your first seed keyword, or the app name.",
+                              "de": "Standard: dein erstes eigenes Keyword, sonst der App-Name."],
+        .asoStepCompetitors: ["en": "Analyze competitor titles", "de": "Konkurrenz-Titel analysieren"],
+        .asoCompetitorCountFmt: ["en": "%d terms from %d apps", "de": "%d Begriffe aus %d Apps"],
+        .asoSrcCompetitor:   ["en": "Competitors", "de": "Konkurrenz"],
+        .asoScoreTitle:      ["en": "ASO scorecard (current metadata)",
+                              "de": "ASO-Bewertung (aktuelle Metadaten)"],
+        .asoScoreKeywordBudget: ["en": "Keyword budget used", "de": "Keyword-Budget genutzt"],
+        .asoScoreClean:      ["en": "No wasted characters", "de": "Keine verschwendeten Zeichen"],
+        .asoScoreTitleUse:   ["en": "App name length used", "de": "App-Name-Länge genutzt"],
+        .asoScoreSubtitleUse:["en": "Subtitle length used", "de": "Untertitel-Länge genutzt"],
 
         // Keyword-tracking agent
         .trkTitle:           ["en": "Tracking agent", "de": "Tracking-Agent"],

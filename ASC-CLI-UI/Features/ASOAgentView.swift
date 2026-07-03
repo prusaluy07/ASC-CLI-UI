@@ -18,9 +18,11 @@ struct ASOAgentView: View {
     @AppStorage("aso.country") private var country = Locale.current.region?.identifier ?? "US"
     @AppStorage("aso.useTracked") private var useTracked = true
     @AppStorage("aso.mineReviews") private var mineReviews = true
+    @AppStorage("aso.useCompetitors") private var useCompetitors = true
     @State private var productIdOverride = ""
     @State private var seeds = ""
     @State private var subtitleText = ""
+    @State private var competitorTerm = ""
 
     // Version / locale
     @State private var selectedVersionId: String?
@@ -31,6 +33,7 @@ struct ASOAgentView: View {
     @State private var runTask: Task<Void, Never>?
     @State private var proposal: ASOProposal?
     @State private var proposalInput: ASOInput?
+    @State private var scorecard: ASOScorecard?
     @State private var copiedField: String?
 
     // Apply / export
@@ -135,9 +138,15 @@ struct ASOAgentView: View {
                         .textFieldStyle(.roundedBorder)
                         .frame(maxWidth: 420)
                 }
+                labeled(loc(.asoCompetitorTermField), hint: loc(.asoCompetitorTermHint)) {
+                    TextField("", text: $competitorTerm)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(maxWidth: 420)
+                }
                 HStack(spacing: 16) {
                     Toggle(loc(.asoUseTracked), isOn: $useTracked).toggleStyle(.checkbox)
                     Toggle(loc(.asoMineReviews), isOn: $mineReviews).toggleStyle(.checkbox)
+                    Toggle(loc(.asoUseCompetitors), isOn: $useCompetitors).toggleStyle(.checkbox)
                 }
             }
             .padding(6)
@@ -231,7 +240,7 @@ struct ASOAgentView: View {
     private var canRun: Bool {
         let hasKey = !apiKey.trimmingCharacters(in: .whitespaces).isEmpty && useTracked
         let hasSeeds = !seeds.trimmingCharacters(in: .whitespaces).isEmpty
-        return hasKey || hasSeeds || mineReviews
+        return hasKey || hasSeeds || mineReviews || useCompetitors
     }
 
     private func stepRow(_ step: AgentStep) -> some View {
@@ -269,6 +278,9 @@ struct ASOAgentView: View {
     private func resultsCard(_ proposal: ASOProposal) -> some View {
         GroupBox {
             VStack(alignment: .leading, spacing: 14) {
+                if let scorecard {
+                    scorecardView(scorecard)
+                }
                 keywordFieldResult(proposal)
 
                 if !proposal.titleSuggestions.isEmpty {
@@ -301,6 +313,53 @@ struct ASOAgentView: View {
         } label: {
             Label(loc(.asoResults), systemImage: "sparkles")
         }
+    }
+
+    private func scorecardView(_ scorecard: ASOScorecard) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Text(loc(.asoScoreTitle)).font(.headline)
+                Spacer()
+                Text("\(scorecard.total)/\(scorecard.maxTotal)")
+                    .font(.title3.weight(.bold))
+                    .monospacedDigit()
+                    .foregroundStyle(scoreColor(scorecard.total, of: scorecard.maxTotal))
+            }
+            HStack(spacing: 12) {
+                ForEach(scorecard.items) { item in
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("\(item.points)/\(item.maxPoints)")
+                            .font(.callout.weight(.semibold))
+                            .monospacedDigit()
+                            .foregroundStyle(scoreColor(item.points, of: item.maxPoints))
+                        Text(scoreLabel(item.kind))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(8)
+                    .background(Color.secondary.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
+                }
+            }
+        }
+    }
+
+    private func scoreLabel(_ kind: ASOScorecard.Item.Kind) -> String {
+        switch kind {
+        case .keywordBudget: return loc(.asoScoreKeywordBudget)
+        case .cleanliness:   return loc(.asoScoreClean)
+        case .titleUsage:    return loc(.asoScoreTitleUse)
+        case .subtitleUsage: return loc(.asoScoreSubtitleUse)
+        }
+    }
+
+    private func scoreColor(_ points: Int, of max: Int) -> Color {
+        guard max > 0 else { return .secondary }
+        let ratio = Double(points) / Double(max)
+        if ratio >= 0.75 { return .green }
+        if ratio >= 0.4 { return .orange }
+        return .red
     }
 
     private func keywordFieldResult(_ proposal: ASOProposal) -> some View {
@@ -446,10 +505,11 @@ struct ASOAgentView: View {
     private func sourceLabels(_ sources: Set<ASOCandidate.Source>) -> String {
         sources.sorted { $0.rawValue < $1.rawValue }.map { source in
             switch source {
-            case .tracked: return loc(.asoSrcTracked)
-            case .seed:    return loc(.asoSrcSeed)
-            case .current: return loc(.asoSrcCurrent)
-            case .reviews: return loc(.asoSrcReviews)
+            case .tracked:    return loc(.asoSrcTracked)
+            case .seed:       return loc(.asoSrcSeed)
+            case .current:    return loc(.asoSrcCurrent)
+            case .reviews:    return loc(.asoSrcReviews)
+            case .competitor: return loc(.asoSrcCompetitor)
             }
         }
         .joined(separator: ", ")
@@ -594,11 +654,13 @@ struct ASOAgentView: View {
         verifiedTerms = []
         missingTerms = []
         let wantsAppfigures = useTracked && !apiKey.trimmingCharacters(in: .whitespaces).isEmpty
+        scorecard = nil
         steps = [
             AgentStep(key: .asoStepMetadata),
             AgentStep(key: .asoStepProduct, status: wantsAppfigures ? .pending : .skipped),
             AgentStep(key: .asoStepKeywords, status: wantsAppfigures ? .pending : .skipped),
             AgentStep(key: .asoStepReviews, status: mineReviews ? .pending : .skipped),
+            AgentStep(key: .asoStepCompetitors, status: useCompetitors ? .pending : .skipped),
             AgentStep(key: .asoStepCompose)
         ]
         runTask = Task {
@@ -668,9 +730,31 @@ struct ASOAgentView: View {
         }
         if Task.isCancelled { return }
 
-        // 5 — compose (pure)
-        setStep(.asoStepCompose, .running)
         let seedList = seeds.split(separator: ",").map { String($0) }
+        let languageCode = (selectedLocale ?? loc.code).hasPrefix("de") ? "de" : "en"
+
+        // 5 — competitor titles via iTunes search (no API key needed)
+        var competitorTerms: [String: Int] = [:]
+        if useCompetitors {
+            setStep(.asoStepCompetitors, .running)
+            let term = [competitorTerm, seedList.first ?? "", app.name]
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .first { !$0.isEmpty } ?? app.name
+            do {
+                let results = try await ITunesSearchClient.search(term: term, country: country, limit: 12)
+                let mined = CompetitorMiner.mine(results,
+                                                 excludingBundleId: app.bundleId,
+                                                 language: languageCode)
+                competitorTerms = Dictionary(uniqueKeysWithValues: mined.map { ($0.term, $0.appCount) })
+                setStep(.asoStepCompetitors, .done(loc(.asoCompetitorCountFmt, mined.count, results.count)))
+            } catch {
+                setStep(.asoStepCompetitors, .failed(error.localizedDescription))
+            }
+        }
+        if Task.isCancelled { return }
+
+        // 6 — compose (pure)
+        setStep(.asoStepCompose, .running)
         let input = ASOInput(
             appName: app.name,
             subtitle: subtitleText.isEmpty ? nil : subtitleText,
@@ -678,11 +762,13 @@ struct ASOAgentView: View {
             seedKeywords: seedList,
             tracked: tracked,
             reviewTexts: reviewTexts,
-            languageCode: (selectedLocale ?? loc.code).hasPrefix("de") ? "de" : "en"
+            competitorTerms: competitorTerms,
+            languageCode: languageCode
         )
         proposalInput = input
         let result = ASOAgentEngine.propose(input)
         proposal = result
+        scorecard = ASOScorecard.evaluate(input: input, warnings: result.warnings)
         let plan = KeywordTrackingPlan.build(input: input, candidates: result.candidates)
         trackingPlan = plan
         trackingSelection = Set(plan.suggestions)

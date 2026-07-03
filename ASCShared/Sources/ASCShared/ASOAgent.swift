@@ -15,6 +15,8 @@ public struct ASOInput: Sendable {
     public var tracked: [AppfiguresKeyword]
     /// Customer review titles/bodies to mine for wording (may be empty).
     public var reviewTexts: [String]
+    /// Terms mined from competitor titles → number of competitor apps using them.
+    public var competitorTerms: [String: Int]
     /// "de", "en", … — controls the stopword list used for review mining.
     public var languageCode: String
     public var keywordLimit: Int
@@ -25,6 +27,7 @@ public struct ASOInput: Sendable {
                 seedKeywords: [String] = [],
                 tracked: [AppfiguresKeyword] = [],
                 reviewTexts: [String] = [],
+                competitorTerms: [String: Int] = [:],
                 languageCode: String = "en",
                 keywordLimit: Int = 100) {
         self.appName = appName
@@ -33,6 +36,7 @@ public struct ASOInput: Sendable {
         self.seedKeywords = seedKeywords
         self.tracked = tracked
         self.reviewTexts = reviewTexts
+        self.competitorTerms = competitorTerms
         self.languageCode = languageCode
         self.keywordLimit = keywordLimit
     }
@@ -43,7 +47,7 @@ public struct ASOInput: Sendable {
 /// A scored keyword candidate with the evidence behind its score.
 public struct ASOCandidate: Sendable, Identifiable, Hashable {
     public enum Source: String, Sendable, CaseIterable {
-        case tracked, seed, current, reviews
+        case tracked, seed, current, reviews, competitor
     }
 
     public let term: String
@@ -133,6 +137,7 @@ public enum ASOAgentEngine {
             var competitiveness: Double?
             var position: Int?
             var reviewHits = 0
+            var competitorHits = 0
         }
         var acc: [String: Accumulator] = [:]
         var order: [String] = []   // stable order for equal scores
@@ -155,6 +160,11 @@ public enum ASOAgentEngine {
         }
         for term in splitKeywordField(input.currentKeywords ?? "") {
             acc[slot(term)]?.sources.insert(.current)
+        }
+        for (term, count) in input.competitorTerms.sorted(by: { $0.key < $1.key }) {
+            let key = slot(term)
+            acc[key]?.sources.insert(.competitor)
+            acc[key]?.competitorHits = max(acc[key]?.competitorHits ?? 0, count)
         }
 
         // Review mining: count how often each known term (or its words) is mentioned,
@@ -181,7 +191,8 @@ public enum ASOAgentEngine {
             let covered = words(in: key).allSatisfy { titleWords.contains($0) }
             return ASOCandidate(term: key,
                                 score: score(a.popularity, a.competitiveness, a.position,
-                                             sources: a.sources, reviewHits: a.reviewHits),
+                                             sources: a.sources, reviewHits: a.reviewHits,
+                                             competitorHits: a.competitorHits),
                                 sources: a.sources,
                                 popularity: a.popularity,
                                 competitiveness: a.competitiveness,
@@ -195,10 +206,10 @@ public enum ASOAgentEngine {
     }
 
     /// 0–100. Popular, low-competition terms win; user intent (seeds), existing good
-    /// rankings, and review language add smaller boosts.
+    /// rankings, review language, and competitor adoption add smaller boosts.
     private static func score(_ popularity: Double?, _ competitiveness: Double?,
                               _ position: Int?, sources: Set<ASOCandidate.Source>,
-                              reviewHits: Int) -> Double {
+                              reviewHits: Int, competitorHits: Int = 0) -> Double {
         let pop = popularity ?? 35            // unknown terms get a modest default
         let comp = competitiveness ?? 50
         var value = pop * (1 - 0.6 * comp / 100)
@@ -207,6 +218,8 @@ public enum ASOAgentEngine {
             if position <= 10 { value += 10 } else if position <= 50 { value += 5 }
         }
         value += min(Double(reviewHits) * 2, 10)
+        // A word several competitors put in their title is proven search demand.
+        value += min(Double(competitorHits) * 3, 12)
         return (value * 10).rounded() / 10
     }
 
