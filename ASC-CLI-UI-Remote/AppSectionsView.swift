@@ -13,10 +13,13 @@ struct AppSectionsView: View {
     var body: some View {
         List {
             if let group {
-                ForEach(group.orderedSections) { section in
-                    if let snapshot = group.snapshots[section] {
-                        NavigationLink(value: SectionRoute(appId: appId, section: section)) {
-                            sectionRow(section: section, snapshot: snapshot)
+                AppOverviewSection(group: group)
+                Section(loc(.rmDataSection)) {
+                    ForEach(group.orderedSections) { section in
+                        if let snapshot = group.snapshots[section] {
+                            NavigationLink(value: SectionRoute(appId: appId, section: section)) {
+                                sectionRow(section: section, snapshot: snapshot)
+                            }
                         }
                     }
                 }

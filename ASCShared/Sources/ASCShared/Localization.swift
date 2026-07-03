@@ -323,6 +323,8 @@ public enum LocKey: String {
     // Remote settings
     case rmDataSection, rmMirroredCountFmt, rmLastSync, rmNever
     case rmCompatMacApp, rmSourceCode, rmImpressum, rmImpressumBody, rmAppInfoNote
+    case rmLatestVersion, rmLatestBuild, rmRating, rmRank, rmDownloads, rmDownloads7d, rmProceeds7d
+    case rmWeekCompare, rmRatingsCountFmt, rmInternalGroup
 }
 
 // MARK: - Manager
@@ -1299,6 +1301,16 @@ enum Strings {
         .rmImpressum:    ["en": "Legal notice", "de": "Impressum"],
         .rmImpressumBody:["en": "ASC Remote is a private, non-commercial companion to ASC Manager. It is not affiliated with or endorsed by Apple. It only reads data you mirror from your own Mac via your private iCloud database and never accesses App Store Connect directly.",
                           "de": "ASC Remote ist eine private, nicht-kommerzielle Begleit-App zu ASC Manager. Sie steht in keiner Verbindung zu Apple und wird nicht von Apple unterstützt. Sie liest ausschließlich Daten, die du von deinem eigenen Mac über deine private iCloud-Datenbank spiegelst, und greift nie direkt auf App Store Connect zu."],
+        .rmLatestVersion: ["en": "Latest version", "de": "Neueste Version"],
+        .rmLatestBuild:  ["en": "Latest build", "de": "Neuester Build"],
+        .rmRating:       ["en": "Rating", "de": "Bewertung"],
+        .rmRank:         ["en": "Chart rank", "de": "Chart-Platzierung"],
+        .rmDownloads:    ["en": "Downloads", "de": "Downloads"],
+        .rmDownloads7d:  ["en": "Downloads (7 days)", "de": "Downloads (7 Tage)"],
+        .rmProceeds7d:   ["en": "Proceeds (7 days)", "de": "Erlöse (7 Tage)"],
+        .rmWeekCompare:  ["en": "This week vs last week", "de": "Diese Woche vs. Vorwoche"],
+        .rmRatingsCountFmt: ["en": "%d ratings", "de": "%d Bewertungen"],
+        .rmInternalGroup: ["en": "Internal", "de": "Intern"],
         .rmAppInfoNote:  ["en": "Read-only mirror. No App Store Connect credentials are stored on this device.",
                           "de": "Schreibgeschützte Spiegelung. Auf diesem Gerät werden keine App-Store-Connect-Zugangsdaten gespeichert."],
 
